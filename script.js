@@ -3,7 +3,6 @@
 const SUPABASE_URL = 'https://grwymznaxkqfoehysxjc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ejP6v4ml6GQg8BnZ6c1RVw_VdA9TUAX';
 
-// Χρησιμοποιούμε supabaseClient αντί για 'supabase' για αποφυγή σύγκρουσης με τη βιβλιοθήκη CDN
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ================= STATE ================= */
@@ -12,6 +11,7 @@ let currentUserId = null;
 let transactions = [];
 let budgetLimit = 1066.00;
 let initialBalance = 0.00;
+let cycleStartDay = 12; // Ημέρα έναρξης του μηνιαίου Κύκλου (π.χ. 12 = 12 έως 11 του επόμενου)
 let currentType = 'expense';
 let isHidden = false;
 let selectedCat = 'all';
@@ -104,7 +104,13 @@ async function handleRegister() {
     const { error: profErr } = await supabaseClient
       .from('profiles')
       .insert([
-        { id: data.user.id, username: u, initial_balance: 0.00, budget_limit: 1066.00 }
+        { 
+          id: data.user.id, 
+          username: u, 
+          initial_balance: 0.00, 
+          budget_limit: 1066.00,
+          cycle_start_day: 12
+        }
       ]);
 
     if (profErr) {
@@ -131,13 +137,14 @@ async function loadUserData() {
 
   const { data: profile } = await supabaseClient
     .from('profiles')
-    .select('username, initial_balance, budget_limit')
+    .select('username, initial_balance, budget_limit, cycle_start_day')
     .eq('id', currentUserId)
     .single();
 
   if (profile) {
     initialBalance = parseFloat(profile.initial_balance || 0);
     budgetLimit = parseFloat(profile.budget_limit || 1066);
+    cycleStartDay = parseInt(profile.cycle_start_day || 12, 10);
     currentUser = profile.username;
   }
 
@@ -272,11 +279,35 @@ async function changeStartingBalance() {
   }
 }
 
+// Ορισμός χρονικού ορίου / Κύκλου ανά χρήστη (π.χ. από 1η έως 31η κάθε μήνα)
+async function changeCycleStartDay() {
+  const val = prompt(`Ορίστε την ημέρα του μήνα που ξεκινάει ο Κύκλος σας (1 έως 28):`, cycleStartDay);
+  if (val !== null) {
+    const day = parseInt(val, 10);
+    if (!isNaN(day) && day >= 1 && day <= 28) {
+      const { error } = await supabaseClient
+        .from('profiles')
+        .update({ cycle_start_day: day })
+        .eq('id', currentUserId);
+
+      if (error) {
+        alert('Σφάλμα: ' + error.message);
+        return;
+      }
+      cycleStartDay = day;
+      renderApp();
+    } else {
+      alert('Παρακαλώ εισάγετε μία έγκυρη ημέρα μεταξύ 1 και 28.');
+    }
+  }
+}
+
 function exportData() {
   const exportPayload = {
     user: currentUser,
     initialBalance: initialBalance,
     budgetLimit: budgetLimit,
+    cycleStartDay: cycleStartDay,
     transactions: transactions
   };
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
@@ -320,7 +351,8 @@ function formatCurrency(amount) {
   return { intPart, decPart: parts[1], isNegative: amount < 0 };
 }
 
-function getActiveCycle(now = new Date()) {
+// Δυναμικός υπολογισμός κύκλου με βάση την ημέρα που επέλεξε ο χρήστης
+function getActiveCycle(now = new Date(), startDay = 12) {
   let y = now.getFullYear();
   let m = now.getMonth();
   let d = now.getDate();
@@ -328,7 +360,7 @@ function getActiveCycle(now = new Date()) {
   let startYear = y;
   let startMonth = m;
 
-  if (d < 12) {
+  if (d < startDay) {
     startMonth -= 1;
     if (startMonth < 0) {
       startMonth = 11;
@@ -343,11 +375,11 @@ function getActiveCycle(now = new Date()) {
     endYear += 1;
   }
 
-  const cycleStart = new Date(startYear, startMonth, 12, 0, 0, 0);
-  const cycleEnd = new Date(endYear, endMonth, 11, 23, 59, 59);
+  const cycleStart = new Date(startYear, startMonth, startDay, 0, 0, 0);
+  const cycleEnd = new Date(endYear, endMonth, startDay - 1, 23, 59, 59);
 
   const mNames = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μαϊ", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
-  const label = `12 ${mNames[cycleStart.getMonth()]} ${cycleStart.getFullYear()} - 11 ${mNames[cycleEnd.getMonth()]} ${cycleEnd.getFullYear()}`;
+  const label = `${cycleStart.getDate()} ${mNames[cycleStart.getMonth()]} ${cycleStart.getFullYear()} - ${cycleEnd.getDate()} ${mNames[cycleEnd.getMonth()]} ${cycleEnd.getFullYear()}`;
 
   return { cycleStart, cycleEnd, label };
 }
@@ -375,9 +407,12 @@ function renderApp() {
   if (initBalEl) initBalEl.innerText = `${iNeg ? '-' : ''}${iInt},${iDec} €`;
 
   const now = new Date();
-  const { cycleStart, cycleEnd, label } = getActiveCycle(now);
+  const { cycleStart, cycleEnd, label } = getActiveCycle(now, cycleStartDay);
   const cycleEl = document.getElementById('budgetCycleTitle');
   if (cycleEl) cycleEl.innerText = `📅 Κύκλος: ${label}`;
+
+  const cBadge = document.getElementById('cycleStartDayBadge');
+  if (cBadge) cBadge.innerText = cycleStartDay;
 
   let cycleSpent = 0;
   transactions.forEach(t => {
