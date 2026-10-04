@@ -324,6 +324,22 @@ body {
   background: #2a3344;
 }
 
+.subtle-cycle-btn {
+  background: rgba(253, 187, 17, 0.12);
+  border: 1px solid rgba(253, 187, 17, 0.35);
+  color: var(--accent-yellow);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subtle-cycle-btn:hover {
+  background: rgba(253, 187, 17, 0.25);
+}
+
 .balance-row {
   display: flex;
   align-items: baseline;
@@ -409,6 +425,11 @@ body {
 .budget-cycle-name {
   font-size: 14px;
   font-weight: 700;
+  transition: opacity 0.2s;
+}
+
+.budget-cycle-name:hover {
+  opacity: 0.8;
 }
 
 .budget-tag {
