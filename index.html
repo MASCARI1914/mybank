@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MyBank Tracker</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN για δυναμικά γραφήματα (Πίτα / Ράβδος) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -89,7 +91,7 @@
           <span>Backup</span>
         </button>
 
-        <button class="badge-limit" id="topLimitBtn" onclick="changeLimit()">
+        <button class="badge-limit" id="topLimitBtn" onclick="openLimitModal()">
           Όριο: 1.066€
         </button>
 
@@ -105,7 +107,7 @@
         <div class="card-box">
           <div class="balance-header-row">
             <div class="balance-label">Διαθέσιμο Υπόλοιπο (Σύνολο)</div>
-            <button class="subtle-link-btn" onclick="changeStartingBalance()" title="Ρύθμιση αρχικού ποσού">
+            <button class="subtle-link-btn" onclick="openBalanceModal()" title="Ρύθμιση αρχικού ποσού">
               ⚙️️ Αρχικό: <span id="initialBalanceBadge">0,00 €</span>
             </button>
           </div>
@@ -113,7 +115,7 @@
           <div class="balance-row">
             <div class="balance-amount" id="balanceDisplay">0,<span class="decimals">00 €</span></div>
             <button class="eye-btn" id="toggleEyeBtn" title="Απόκρυψη / Εμφάνιση">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
             </button>
           </div>
 
@@ -126,23 +128,32 @@
               <div class="icon" style="color: #ff5252;">-</div>
               <span>Αφαίρεση</span>
             </div>
-            <div class="action-card" onclick="changeLimit()">
+            <div class="action-card" onclick="openLimitModal()">
               <div class="icon" style="color: #fdbb11;">🎯</div>
               <span>Όριο</span>
             </div>
-            <div class="action-card" onclick="changeStartingBalance()">
+            <div class="action-card" onclick="openBalanceModal()">
               <div class="icon" style="color: #3498db;">⚙️</div>
               <span>Αρχικό</span>
             </div>
           </div>
         </div>
 
+        <!-- Budget & Analytics Widget -->
         <div class="budget-widget">
+          <!-- View Toggle: Κύκλος vs Ημερολογιακός Μήνας -->
+          <div class="view-switch-row">
+            <button class="view-btn active" id="viewModeCycle" onclick="setViewMode('cycle')">🔄 Ανάλυση Κύκλου</button>
+            <button class="view-btn" id="viewModeMonth" onclick="setViewMode('month')">📅 Ημερολογιακός Μήνας</button>
+          </div>
+
           <div class="budget-top">
-            <span class="budget-cycle-name" id="budgetCycleTitle" onclick="changeCycleStartDay()" title="Κάντε κλικ για αλλαγή έναρξης κύκλου" style="cursor: pointer;">📅 Κύκλος: --</span>
+            <span class="budget-cycle-name" id="budgetCycleTitle" onclick="handleCycleTitleClick()" title="Κάντε κλικ για αλλαγή κύκλου" style="cursor: pointer;">--</span>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <button class="subtle-cycle-btn" onclick="changeCycleStartDay()" title="Ορισμός έναρξης Κύκλου">⚙️ Κύκλος: <span id="cycleStartDayBadge">12</span>η</button>
-              <span class="budget-tag" id="budgetLimitBadge">Όριο: 1.066,00 €</span>
+              <button class="subtle-cycle-btn" id="cycleSettingsBtn" onclick="openCycleCalendarModal()" title="Ορισμός έναρξης Κύκλου">
+                📅 Κύκλος: <span id="cycleStartDayBadge">12</span>η
+              </button>
+              <span class="budget-tag" id="budgetLimitBadge" onclick="openLimitModal()" style="cursor: pointer;">Όριο: 1.066,00 €</span>
             </div>
           </div>
 
@@ -152,7 +163,7 @@
 
           <div class="budget-details">
             <div class="detail-item">
-              <span class="detail-label">Έξοδα Κύκλου</span>
+              <span class="detail-label" id="cycleSpentLabel">Έξοδα Περιόδου</span>
               <span class="detail-val" id="cycleSpentVal">0,00 €</span>
             </div>
             <div class="detail-item" style="text-align: center;">
@@ -163,6 +174,24 @@
               <span class="detail-label">Υπόλοιπο Ορίου</span>
               <span class="detail-val" id="cycleRemainingVal">1.066,00 €</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Chart Analytics Section -->
+        <div class="chart-widget">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span>📊 Οπτική Ανάλυση Εξόδων</span>
+              <span class="chart-subtitle" id="chartPeriodSubtitle">(Τρέχων Κύκλος)</span>
+            </div>
+            <div class="chart-toggle-group">
+              <button class="chart-toggle-btn active" id="chartBtnDoughnut" onclick="setChartType('doughnut')" title="Γράφημα Πίτας">🥧 Πίτα</button>
+              <button class="chart-toggle-btn" id="chartBtnBar" onclick="setChartType('bar')" title="Γράφημα Ράβδων">📊 Ράβδος</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="expensesChart"></canvas>
+            <div class="chart-empty-msg" id="chartEmptyMsg" style="display: none;">Δεν υπάρχουν έξοδα για αυτή την περίοδο.</div>
           </div>
         </div>
       </section>
@@ -193,8 +222,10 @@
     </main>
   </div>
 
-  <!-- Modal Νέας Συναλλαγής -->
-  <div class="modal-overlay" id="txModal" onclick="closeOverlay(event)">
+  <!-- ================= MODALS SECTION ================= -->
+
+  <!-- Modal 1: Νέα Συναλλαγή -->
+  <div class="modal-overlay" id="txModal" onclick="closeOverlay(event, 'txModal')">
     <div class="modal-box">
       <div class="modal-title">Νέα Συναλλαγή</div>
 
@@ -239,12 +270,74 @@
         </div>
 
         <button type="submit" class="submit-btn">Καταχώρηση</button>
-        <button type="button" class="cancel-btn" onclick="closeModal()">Ακύρωση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('txModal')">Ακύρωση</button>
       </form>
     </div>
   </div>
 
+  <!-- Modal 2: Ρύθμιση Αρχικού Ποσού (Αντικατάσταση prompt) -->
+  <div class="modal-overlay" id="balanceModal" onclick="closeOverlay(event, 'balanceModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">⚙️ Αρχικό Υπόλοιπο</div>
+      <p class="modal-description">Ορίστε το ποσό που είχατε ήδη πριν από τις καταχωρήσεις:</p>
+      
+      <form onsubmit="handleSaveStartingBalance(event)">
+        <div class="f-group">
+          <label class="f-label">Αρχικό Ποσό (€)</label>
+          <input type="number" step="0.01" class="f-input" id="inputStartingBalance" placeholder="π.χ. 500.00" required>
+        </div>
+        <button type="submit" class="submit-btn">Αποθήκευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('balanceModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Ρύθμιση Μηνιαίου Ορίου (Αντικατάσταση prompt) -->
+  <div class="modal-overlay" id="limitModal" onclick="closeOverlay(event, 'limitModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">🎯 Μηνιαίο Όριο Εξόδων</div>
+      <p class="modal-description">Ορίστε το ανώτατο όριο εξόδων για τον κύκλο/μήνα σας:</p>
+      
+      <form onsubmit="handleSaveLimit(event)">
+        <div class="f-group">
+          <label class="f-label">Όριο Εξόδων (€)</label>
+          <input type="number" step="0.01" min="1" class="f-input" id="inputBudgetLimit" placeholder="π.χ. 1066.00" required>
+        </div>
+        <button type="submit" class="submit-btn">Αποθήκευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('limitModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Ημερολόγιο / Επιλογή Έναρξης Κύκλου (Interactive Calendar Day Picker) -->
+  <div class="modal-overlay" id="cycleCalendarModal" onclick="closeOverlay(event, 'cycleCalendarModal')">
+    <div class="modal-box calendar-modal">
+      <div class="modal-title">📅 Έναρξη Μηνιαίου Κύκλου</div>
+      <p class="modal-description">Επιλέξτε την ημέρα του μήνα από την οποία θα ξεκινά ο Κύκλος σας:</p>
+      
+      <div class="calendar-preview-banner">
+        <span>Επιλεγμένος Κύκλος:</span>
+        <b id="calendarPreviewLabel">Κάθε 12η του μήνα</b>
+      </div>
+
+      <!-- Πλέγμα Ημερών Ημερολογίου (1 έως 28) -->
+      <div class="calendar-grid" id="calendarDaysGrid">
+        <!-- Παράγεται δυναμικά από τη JavaScript -->
+      </div>
+
+      <div class="modal-actions-row">
+        <button type="button" class="submit-btn" onclick="confirmCycleSelection()">Επιβεβαίωση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('cycleCalendarModal')">Κλείσιμο</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Sleek Alert Toast -->
+  <div class="toast-notification" id="toastNotification">
+    <span id="toastMsg">Μήνυμα</span>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
