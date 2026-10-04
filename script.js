@@ -1,5 +1,5 @@
 /* ================= SUPABASE INITIALIZATION ================= */
-// ΣΥΜΠΛΗΡΩΣΕ ΤΑ ΔΙΚΑ ΣΟΥ ΑΠΟ ΤΟ SUPABASE (Settings -> API)
+// Τα ακριβή σου κλειδιά από το Supabase project
 const SUPABASE_URL = 'https://grwymznaxkqfoehysxjc.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_ejP6v4ml6GQg8BnZ6c1RVw_VdA9TUAX';
 
@@ -11,10 +11,33 @@ let currentUserId = null;
 let transactions = [];
 let budgetLimit = 1066.00;
 let initialBalance = 0.00;
-let cycleStartDay = 12; // Ημέρα έναρξης του μηνιαίου Κύκλου (π.χ. 12 = 12 έως 11 του επόμενου)
+let cycleStartDay = 12; // Ημέρα έναρξης του μηνιαίου Κύκλου
+let tempSelectedCycleDay = 12; // Προσωρινή επιλογή στο ημερολόγιο
 let currentType = 'expense';
 let isHidden = false;
 let selectedCat = 'all';
+
+// Ανάλυση: 'cycle' (Κύκλος) ή 'month' (Ημερολογιακός Μήνας)
+let analysisMode = 'cycle'; 
+// Τύπος γραφήματος: 'doughnut' (Πίτα) ή 'bar' (Ράβδος)
+let chartType = 'doughnut';
+let expensesChartInstance = null;
+
+/* ================= TOAST NOTIFICATION (ΑΝΤΙΚΑΤΑΣΤΑΣΗ ALERT) ================= */
+let toastTimeout;
+function showToast(message, duration = 3000) {
+  const toast = document.getElementById('toastNotification');
+  const msgEl = document.getElementById('toastMsg');
+  if (!toast || !msgEl) return;
+
+  msgEl.innerText = message;
+  toast.classList.add('active');
+
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove('active');
+  }, duration);
+}
 
 /* ================= AUTHENTICATION ================= */
 function togglePasswordVisibility() {
@@ -145,6 +168,7 @@ async function loadUserData() {
     initialBalance = parseFloat(profile.initial_balance || 0);
     budgetLimit = parseFloat(profile.budget_limit || 1066);
     cycleStartDay = parseInt(profile.cycle_start_day || 12, 10);
+    tempSelectedCycleDay = cycleStartDay;
     currentUser = profile.username;
   }
 
@@ -197,6 +221,143 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+/* ================= MODAL MANAGEMENT ================= */
+function openModal(modalId) {
+  if (modalId === 'expense' || modalId === 'income') {
+    setType(modalId);
+    document.getElementById('txAmount').value = '';
+    document.getElementById('txTitle').value = '';
+    document.getElementById('txReason').value = '';
+    resetModalDateTime();
+    document.getElementById('txModal').classList.add('active');
+    return;
+  }
+  const el = document.getElementById(modalId);
+  if (el) el.classList.add('active');
+}
+
+function closeModal(modalId) {
+  const el = document.getElementById(modalId);
+  if (el) el.classList.remove('active');
+}
+
+function closeOverlay(e, modalId) {
+  if (e.target.id === modalId) {
+    closeModal(modalId);
+  }
+}
+
+// 1. Modal Ρύθμισης Αρχικού Υπολοίπου
+function openBalanceModal() {
+  document.getElementById('inputStartingBalance').value = initialBalance.toFixed(2);
+  openModal('balanceModal');
+}
+
+async function handleSaveStartingBalance(e) {
+  e.preventDefault();
+  const val = parseFloat(document.getElementById('inputStartingBalance').value);
+  if (isNaN(val)) return;
+
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ initial_balance: val })
+    .eq('id', currentUserId);
+
+  if (error) {
+    showToast('⚠️ Σφάλμα αποθήκευσης: ' + error.message);
+    return;
+  }
+
+  initialBalance = val;
+  closeModal('balanceModal');
+  showToast('✅ Το αρχικό υπόλοιπο αποθηκεύτηκε!');
+  renderApp();
+}
+
+// 2. Modal Ρύθμισης Ορίου
+function openLimitModal() {
+  document.getElementById('inputBudgetLimit').value = budgetLimit.toFixed(2);
+  openModal('limitModal');
+}
+
+async function handleSaveLimit(e) {
+  e.preventDefault();
+  const val = parseFloat(document.getElementById('inputBudgetLimit').value);
+  if (isNaN(val) || val <= 0) return;
+
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ budget_limit: val })
+    .eq('id', currentUserId);
+
+  if (error) {
+    showToast('⚠️ Σφάλμα αποθήκευσης: ' + error.message);
+    return;
+  }
+
+  budgetLimit = val;
+  closeModal('limitModal');
+  showToast('✅ Το μηνιαίο όριο ανανεώθηκε!');
+  renderApp();
+}
+
+// 3. Modal Ημερολογίου / Επιλογής Έναρξης Κύκλου
+function openCycleCalendarModal() {
+  tempSelectedCycleDay = cycleStartDay;
+  buildCalendarDaysGrid();
+  openModal('cycleCalendarModal');
+}
+
+function buildCalendarDaysGrid() {
+  const container = document.getElementById('calendarDaysGrid');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const preview = document.getElementById('calendarPreviewLabel');
+  if (preview) {
+    preview.innerText = `Κάθε ${tempSelectedCycleDay}η του μήνα`;
+  }
+
+  // Δημιουργία ημερών 1 έως 28
+  for (let d = 1; d <= 28; d++) {
+    const cell = document.createElement('div');
+    cell.className = `cal-day-cell ${d === tempSelectedCycleDay ? 'selected' : ''}`;
+    cell.innerText = d;
+    cell.onclick = () => {
+      tempSelectedCycleDay = d;
+      document.querySelectorAll('.cal-day-cell').forEach(c => c.classList.remove('selected'));
+      cell.classList.add('selected');
+      if (preview) {
+        preview.innerText = `Κάθε ${tempSelectedCycleDay}η του μήνα`;
+      }
+    };
+    container.appendChild(cell);
+  }
+}
+
+async function confirmCycleSelection() {
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ cycle_start_day: tempSelectedCycleDay })
+    .eq('id', currentUserId);
+
+  if (error) {
+    showToast('⚠️ Σφάλμα αποθήκευσης: ' + error.message);
+    return;
+  }
+
+  cycleStartDay = tempSelectedCycleDay;
+  closeModal('cycleCalendarModal');
+  showToast(`✅ Ο κύκλος ξεκινάει πλέον κάθε ${cycleStartDay} του μήνα!`);
+  renderApp();
+}
+
+function handleCycleTitleClick() {
+  if (analysisMode === 'cycle') {
+    openCycleCalendarModal();
+  }
+}
+
 /* ================= ACTIONS ================= */
 async function saveTx(e) {
   e.preventDefault();
@@ -220,11 +381,12 @@ async function saveTx(e) {
 
   const { error } = await supabaseClient.from('transactions').insert([payload]);
   if (error) {
-    alert('Σφάλμα αποθήκευσης: ' + error.message);
+    showToast('⚠️ Σφάλμα αποθήκευσης: ' + error.message);
     return;
   }
 
-  closeModal();
+  closeModal('txModal');
+  showToast('✅ Η συναλλαγή καταχωρήθηκε!');
   await loadUserData();
 }
 
@@ -236,70 +398,33 @@ async function deleteTx(id) {
       .eq('id', id);
 
     if (error) {
-      alert('Σφάλμα διαγραφής: ' + error.message);
+      showToast('⚠️ Σφάλμα διαγραφής: ' + error.message);
       return;
     }
+    showToast('🗑️ Η συναλλαγή διαγράφηκε.');
     await loadUserData();
   }
 }
 
-async function changeLimit() {
-  const val = prompt(`Ορίστε το μηνιαίο όριο εξόδων (€):`, budgetLimit);
-  if (val !== null && !isNaN(parseFloat(val)) && parseFloat(val) > 0) {
-    const newLimit = parseFloat(val);
-    const { error } = await supabaseClient
-      .from('profiles')
-      .update({ budget_limit: newLimit })
-      .eq('id', currentUserId);
-
-    if (error) {
-      alert('Σφάλμα: ' + error.message);
-      return;
-    }
-    budgetLimit = newLimit;
-    renderApp();
+/* ================= VIEW MODE & CHART TOGGLES ================= */
+function setViewMode(mode) {
+  analysisMode = mode;
+  document.getElementById('viewModeCycle').className = `view-btn ${mode === 'cycle' ? 'active' : ''}`;
+  document.getElementById('viewModeMonth').className = `view-btn ${mode === 'month' ? 'active' : ''}`;
+  
+  const cBtn = document.getElementById('cycleSettingsBtn');
+  if (cBtn) {
+    cBtn.style.display = mode === 'cycle' ? 'inline-flex' : 'none';
   }
+  
+  renderApp();
 }
 
-async function changeStartingBalance() {
-  const val = prompt(`Ορίστε το αρχικό ποσό υπολοίπου (€):`, initialBalance);
-  if (val !== null && !isNaN(parseFloat(val))) {
-    const newBal = parseFloat(val);
-    const { error } = await supabaseClient
-      .from('profiles')
-      .update({ initial_balance: newBal })
-      .eq('id', currentUserId);
-
-    if (error) {
-      alert('Σφάλμα: ' + error.message);
-      return;
-    }
-    initialBalance = newBal;
-    renderApp();
-  }
-}
-
-// Ορισμός χρονικού ορίου / Κύκλου ανά χρήστη (π.χ. από 1η έως 31η κάθε μήνα)
-async function changeCycleStartDay() {
-  const val = prompt(`Ορίστε την ημέρα του μήνα που ξεκινάει ο Κύκλος σας (1 έως 28):`, cycleStartDay);
-  if (val !== null) {
-    const day = parseInt(val, 10);
-    if (!isNaN(day) && day >= 1 && day <= 28) {
-      const { error } = await supabaseClient
-        .from('profiles')
-        .update({ cycle_start_day: day })
-        .eq('id', currentUserId);
-
-      if (error) {
-        alert('Σφάλμα: ' + error.message);
-        return;
-      }
-      cycleStartDay = day;
-      renderApp();
-    } else {
-      alert('Παρακαλώ εισάγετε μία έγκυρη ημέρα μεταξύ 1 και 28.');
-    }
-  }
+function setChartType(type) {
+  chartType = type;
+  document.getElementById('chartBtnDoughnut').className = `chart-toggle-btn ${type === 'doughnut' ? 'active' : ''}`;
+  document.getElementById('chartBtnBar').className = `chart-toggle-btn ${type === 'bar' ? 'active' : ''}`;
+  renderChart();
 }
 
 function exportData() {
@@ -317,6 +442,7 @@ function exportData() {
   document.body.appendChild(a);
   a.click();
   a.remove();
+  showToast('💾 Το αρχείο Backup κατέβηκε!');
 }
 
 /* ================= CLOCK & DATE UTILS ================= */
@@ -351,7 +477,7 @@ function formatCurrency(amount) {
   return { intPart, decPart: parts[1], isNegative: amount < 0 };
 }
 
-// Δυναμικός υπολογισμός κύκλου με βάση την ημέρα που επέλεξε ο χρήστης
+// 1. Υπολογισμός Κύκλου Χρήστη (π.χ. 12 Οκτ - 11 Νοε)
 function getActiveCycle(now = new Date(), startDay = 12) {
   let y = now.getFullYear();
   let m = now.getMonth();
@@ -381,13 +507,27 @@ function getActiveCycle(now = new Date(), startDay = 12) {
   const mNames = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μαϊ", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
   const label = `${cycleStart.getDate()} ${mNames[cycleStart.getMonth()]} ${cycleStart.getFullYear()} - ${cycleEnd.getDate()} ${mNames[cycleEnd.getMonth()]} ${cycleEnd.getFullYear()}`;
 
-  return { cycleStart, cycleEnd, label };
+  return { start: cycleStart, end: cycleEnd, label };
+}
+
+// 2. Υπολογισμός Ημερολογιακού Μήνα (π.χ. 1 Οκτ - 31 Οκτ)
+function getActiveMonth(now = new Date()) {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const monthStart = new Date(y, m, 1, 0, 0, 0);
+  const monthEnd = new Date(y, m + 1, 0, 23, 59, 59);
+
+  const mNames = ["Ιανουάριος", "Φεβρουάριος", "Μάρτιος", "Απρίλιος", "Μάιος", "Ιούνιος", "Ιούλιος", "Αύγουστος", "Σεπτέμβριος", "Οκτώβριος", "Νοέμβριος", "Δεκέμβριος"];
+  const label = `${mNames[m]} ${y} (1 - ${monthEnd.getDate()} ${mNames[m].slice(0,3)})`;
+
+  return { start: monthStart, end: monthEnd, label };
 }
 
 /* ================= RENDER LOGIC ================= */
 function renderApp() {
   if (!currentUserId) return;
 
+  // Υπολογισμός συνολικού διαθέσιμου υπολοίπου
   let total = initialBalance;
   transactions.forEach(t => {
     if (t.type === 'income') total += t.amount;
@@ -406,26 +546,37 @@ function renderApp() {
   const initBalEl = document.getElementById('initialBalanceBadge');
   if (initBalEl) initBalEl.innerText = `${iNeg ? '-' : ''}${iInt},${iDec} €`;
 
+  // Επιλογή περιόδου βάσει analysisMode (Κύκλος ή Μήνας)
   const now = new Date();
-  const { cycleStart, cycleEnd, label } = getActiveCycle(now, cycleStartDay);
-  const cycleEl = document.getElementById('budgetCycleTitle');
-  if (cycleEl) cycleEl.innerText = `📅 Κύκλος: ${label}`;
+  let period;
+  if (analysisMode === 'cycle') {
+    period = getActiveCycle(now, cycleStartDay);
+    document.getElementById('budgetCycleTitle').innerText = `🔄 Κύκλος: ${period.label}`;
+    document.getElementById('cycleSpentLabel').innerText = 'Έξοδα Κύκλου';
+    document.getElementById('chartPeriodSubtitle').innerText = `(${period.label})`;
+  } else {
+    period = getActiveMonth(now);
+    document.getElementById('budgetCycleTitle').innerText = `📅 Μήνας: ${period.label}`;
+    document.getElementById('cycleSpentLabel').innerText = 'Έξοδα Μήνα';
+    document.getElementById('chartPeriodSubtitle').innerText = `(${period.label})`;
+  }
 
   const cBadge = document.getElementById('cycleStartDayBadge');
   if (cBadge) cBadge.innerText = cycleStartDay;
 
-  let cycleSpent = 0;
+  // Υπολογισμός εξόδων τρέχουσας επιλεγμένης περιόδου
+  let periodSpent = 0;
   transactions.forEach(t => {
     const tDate = new Date(t.date);
-    if (t.type === 'expense' && tDate >= cycleStart && tDate <= cycleEnd) {
-      cycleSpent += t.amount;
+    if (t.type === 'expense' && tDate >= period.start && tDate <= period.end) {
+      periodSpent += t.amount;
     }
   });
 
-  const remaining = budgetLimit - cycleSpent;
-  const percent = budgetLimit > 0 ? Math.min(100, Math.round((cycleSpent / budgetLimit) * 100)) : 0;
+  const remaining = budgetLimit - periodSpent;
+  const percent = budgetLimit > 0 ? Math.min(100, Math.round((periodSpent / budgetLimit) * 100)) : 0;
 
-  const { intPart: sInt, decPart: sDec } = formatCurrency(cycleSpent);
+  const { intPart: sInt, decPart: sDec } = formatCurrency(periodSpent);
   const spentEl = document.getElementById('cycleSpentVal');
   if (spentEl) spentEl.innerText = `${sInt},${sDec} €`;
 
@@ -453,57 +604,195 @@ function renderApp() {
   const topLim = document.getElementById('topLimitBtn');
   if (topLim) topLim.innerText = `Όριο: ${lInt}€`;
 
+  // Συναλλαγές λίστας
   const filtered = transactions.filter(t => selectedCat === 'all' || t.category === selectedCat);
   const listEl = document.getElementById('transactionList');
 
-  if (!listEl) return;
+  if (listEl) {
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Δεν υπάρχουν συναλλαγές σε αυτή την κατηγορία.<br>Πάτα <b>+ Νέα Συναλλαγή</b> για καταχώρηση!</div>';
+    } else {
+      const iconColors = {
+        'Ενοίκιο': 'red',
+        'Λογαριασμοί': 'orange',
+        'Supermarket': 'teal',
+        'Γυμναστήριο': 'purple',
+        'Έξοδοι': 'blue',
+        'Μετακίνηση': 'blue',
+        'Μισθοδοσία': 'green',
+        'Άλλο': 'orange'
+      };
 
-  if (filtered.length === 0) {
-    listEl.innerHTML = '<div class="empty-state">Δεν υπάρχουν συναλλαγές σε αυτή την κατηγορία.<br>Πάτα <b>+ Νέα Συναλλαγή</b> για καταχώρηση!</div>';
+      listEl.innerHTML = filtered.map(t => {
+        const isIncome = t.type === 'income';
+        const color = iconColors[t.category] || (isIncome ? 'green' : 'blue');
+        const sign = isIncome ? '+' : '-';
+        const amountClass = isIncome ? 'income' : 'expense';
+        const { intPart, decPart } = formatCurrency(t.amount);
+        const iconChar = t.category === 'Ενοίκιο' ? '🏠' : (t.category === 'Γυμναστήριο' ? '🥊' : (t.category === 'Supermarket' ? '🛒' : (t.category === 'Λογαριασμοί' ? '💡' : (t.category === 'Έξοδοι' ? '☕' : (t.title[0] || '€')))));
+
+        const d = new Date(t.date);
+        const dateFormatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
+        const timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+        return `
+          <div class="tx-item">
+            <div class="tx-left">
+              <div class="tx-icon-badge tx-icon-${color}">${iconChar}</div>
+              <div class="tx-details">
+                <div class="tx-name">${t.title}</div>
+                <div class="tx-meta">${dateFormatted} • ${timeFormatted} • ${t.reason || t.category || ''}</div>
+              </div>
+            </div>
+            <div class="tx-right">
+              <div class="tx-amt ${amountClass}">${sign} ${intPart},${decPart} €</div>
+              <button class="del-btn" onclick="deleteTx(${t.id})" title="Διαγραφή">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // Ανανέωση Γραφήματος
+  renderChart();
+}
+
+/* ================= CHART RENDERING (ΠΙΤΑ / ΡΑΒΔΟΣ) ================= */
+function renderChart() {
+  const canvas = document.getElementById('expensesChart');
+  const emptyMsg = document.getElementById('chartEmptyMsg');
+  if (!canvas) return;
+
+  const now = new Date();
+  const period = analysisMode === 'cycle' ? getActiveCycle(now, cycleStartDay) : getActiveMonth(now);
+
+  const catTotals = {};
+  transactions.forEach(t => {
+    const tDate = new Date(t.date);
+    if (t.type === 'expense' && tDate >= period.start && tDate <= period.end) {
+      catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+    }
+  });
+
+  const categories = Object.keys(catTotals);
+  const dataValues = Object.values(catTotals);
+
+  if (categories.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyMsg) emptyMsg.style.display = 'block';
+    if (expensesChartInstance) {
+      expensesChartInstance.destroy();
+      expensesChartInstance = null;
+    }
     return;
   }
 
-  const iconColors = {
-    'Ενοίκιο': 'red',
-    'Λογαριασμοί': 'orange',
-    'Supermarket': 'teal',
-    'Γυμναστήριο': 'purple',
-    'Έξοδοι': 'blue',
-    'Μετακίνηση': 'blue',
-    'Μισθοδοσία': 'green',
-    'Άλλο': 'orange'
+  canvas.style.display = 'block';
+  if (emptyMsg) emptyMsg.style.display = 'none';
+
+  const colorMap = {
+    'Ενοίκιο': '#ff5252',
+    'Λογαριασμοί': '#e67e22',
+    'Supermarket': '#1abc9c',
+    'Γυμναστήριο': '#9b59b6',
+    'Έξοδοι': '#3498db',
+    'Μετακίνηση': '#2980b9',
+    'Μισθοδοσία': '#2ecc71',
+    'Άλλο': '#f39c12'
   };
 
-  listEl.innerHTML = filtered.map(t => {
-    const isIncome = t.type === 'income';
-    const color = iconColors[t.category] || (isIncome ? 'green' : 'blue');
-    const sign = isIncome ? '+' : '-';
-    const amountClass = isIncome ? 'income' : 'expense';
-    const { intPart, decPart } = formatCurrency(t.amount);
-    const iconChar = t.category === 'Ενοίκιο' ? '🏠' : (t.category === 'Γυμναστήριο' ? '🥊' : (t.category === 'Supermarket' ? '🛒' : (t.category === 'Λογαριασμοί' ? '💡' : (t.category === 'Έξοδοι' ? '☕' : (t.title[0] || '€')))));
+  const bgColors = categories.map(cat => colorMap[cat] || '#8c93a3');
 
-    const d = new Date(t.date);
-    const dateFormatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
-    const timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (expensesChartInstance) {
+    expensesChartInstance.destroy();
+  }
 
-    return `
-      <div class="tx-item">
-        <div class="tx-left">
-          <div class="tx-icon-badge tx-icon-${color}">${iconChar}</div>
-          <div class="tx-details">
-            <div class="tx-name">${t.title}</div>
-            <div class="tx-meta">${dateFormatted} • ${timeFormatted} • ${t.reason || t.category || ''}</div>
-          </div>
-        </div>
-        <div class="tx-right">
-          <div class="tx-amt ${amountClass}">${sign} ${intPart},${decPart} €</div>
-          <button class="del-btn" onclick="deleteTx(${t.id})" title="Διαγραφή">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
+  const ctx = canvas.getContext('2d');
+
+  if (chartType === 'doughnut') {
+    expensesChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: categories,
+        datasets: [{
+          data: dataValues,
+          backgroundColor: bgColors,
+          borderWidth: 2,
+          borderColor: '#15181e',
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#ffffff',
+              boxWidth: 12,
+              font: { size: 11, family: '-apple-system, sans-serif' }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                return ` ${context.label}: ${val.toFixed(2)} €`;
+              }
+            }
+          }
+        },
+        cutout: '62%'
+      }
+    });
+  } else {
+    expensesChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: categories,
+        datasets: [{
+          label: 'Έξοδα (€)',
+          data: dataValues,
+          backgroundColor: bgColors,
+          borderRadius: 6,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: '#8c93a3', font: { size: 11 } },
+            grid: { display: false }
+          },
+          y: {
+            ticks: {
+              color: '#8c93a3',
+              font: { size: 11 },
+              callback: value => value + '€'
+            },
+            grid: { color: '#272c38' }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                return ` ${val.toFixed(2)} €`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
 }
 
 function filterCategory(cat, el) {
@@ -511,24 +800,6 @@ function filterCategory(cat, el) {
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
   renderApp();
-}
-
-function openModal(type = 'expense') {
-  currentType = type;
-  setType(type);
-  document.getElementById('txAmount').value = '';
-  document.getElementById('txTitle').value = '';
-  document.getElementById('txReason').value = '';
-  resetModalDateTime();
-  document.getElementById('txModal').classList.add('active');
-}
-
-function closeModal() {
-  document.getElementById('txModal').classList.remove('active');
-}
-
-function closeOverlay(e) {
-  if (e.target === document.getElementById('txModal')) closeModal();
 }
 
 function setType(type) {
