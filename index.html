@@ -106,7 +106,7 @@
           <div class="balance-header-row">
             <div class="balance-label">Διαθέσιμο Υπόλοιπο (Σύνολο)</div>
             <button class="subtle-link-btn" onclick="changeStartingBalance()" title="Ρύθμιση αρχικού ποσού">
-              ⚙️ Αρχικό: <span id="initialBalanceBadge">0,00 €</span>
+              ⚙️️ Αρχικό: <span id="initialBalanceBadge">0,00 €</span>
             </button>
           </div>
           
@@ -132,15 +132,18 @@
             </div>
             <div class="action-card" onclick="changeStartingBalance()">
               <div class="icon" style="color: #3498db;">⚙️</div>
-              <span>Αρχικό Ποσό</span>
+              <span>Αρχικό</span>
             </div>
           </div>
         </div>
 
         <div class="budget-widget">
           <div class="budget-top">
-            <span class="budget-cycle-name" id="budgetCycleTitle">📅 Κύκλος: 12 Οκτ 2026 - 11 Νοε 2026</span>
-            <span class="budget-tag" id="budgetLimitBadge">Όριο: 1.066,00 €</span>
+            <span class="budget-cycle-name" id="budgetCycleTitle" onclick="changeCycleStartDay()" title="Κάντε κλικ για αλλαγή έναρξης κύκλου" style="cursor: pointer;">📅 Κύκλος: --</span>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button class="subtle-cycle-btn" onclick="changeCycleStartDay()" title="Ορισμός έναρξης Κύκλου">⚙️ Κύκλος: <span id="cycleStartDayBadge">12</span>η</button>
+              <span class="budget-tag" id="budgetLimitBadge">Όριο: 1.066,00 €</span>
+            </div>
           </div>
 
           <div class="progress-bar-bg">
@@ -240,6 +243,7 @@
       </form>
     </div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
