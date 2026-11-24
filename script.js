@@ -17,7 +17,7 @@ let isHidden = false;
 let selectedCat = 'all';
 
 // Ανάλυση: 'cycle' (Κύκλος) ή 'month' (Ημερολογιακός Μήνας)
-let analysisMode = 'cycle'; 
+let analysisMode = 'cycle';
 // Τύπος γραφήματος: 'doughnut' (Πίτα) ή 'bar' (Ράβδος)
 let chartType = 'doughnut';
 let expensesChartInstance = null;
@@ -126,10 +126,10 @@ async function handleRegister() {
     const { error: profErr } = await supabaseClient
       .from('profiles')
       .insert([
-        { 
-          id: data.user.id, 
-          username: u, 
-          initial_balance: 0.00, 
+        {
+          id: data.user.id,
+          username: u,
+          initial_balance: 0.00,
           budget_limit: 1066.00,
           cycle_start_day: 12
         }
@@ -228,8 +228,8 @@ function openModal(modalId) {
     document.getElementById('txAmount').value = '';
     document.getElementById('txTitle').value = '';
     document.getElementById('txReason').value = '';
-    const exclCheck = document.getElementById('txExcludeCycle');
-    if (exclCheck) exclCheck.checked = false;
+    const exclCb = document.getElementById('txExcludeCycle');
+    if (exclCb) exclCb.checked = false;
     resetModalDateTime();
     document.getElementById('txModal').classList.add('active');
     return;
@@ -249,7 +249,6 @@ function closeOverlay(e, modalId) {
   }
 }
 
-// 1. Modal Ρύθμισης Αρχικού Υπολοίπου
 function openBalanceModal() {
   document.getElementById('inputStartingBalance').value = initialBalance.toFixed(2);
   openModal('balanceModal');
@@ -276,7 +275,6 @@ async function handleSaveStartingBalance(e) {
   renderApp();
 }
 
-// 2. Modal Ρύθμισης Ορίου
 function openLimitModal() {
   document.getElementById('inputBudgetLimit').value = budgetLimit.toFixed(2);
   openModal('limitModal');
@@ -303,7 +301,6 @@ async function handleSaveLimit(e) {
   renderApp();
 }
 
-// 3. Modal Ημερολογίου / Επιλογής Έναρξης Κύκλου
 function openCycleCalendarModal() {
   tempSelectedCycleDay = cycleStartDay;
   buildCalendarDaysGrid();
@@ -367,10 +364,8 @@ async function saveTx(e) {
   const reasonVal = document.getElementById('txReason').value.trim();
   const catVal = document.getElementById('txCategory').value;
   const dateTimeVal = document.getElementById('txDateTime').value;
-  const exclCheck = document.getElementById('txExcludeCycle');
-  
-  // Ισχύει μόνο για αφαίρεση (expense)
-  const excludeVal = (currentType === 'expense' && exclCheck) ? exclCheck.checked : false;
+  const excludeCb = document.getElementById('txExcludeCycle');
+  const isExcluded = (currentType === 'expense' && excludeCb) ? excludeCb.checked : false;
 
   if (isNaN(amountVal) || amountVal <= 0 || !titleVal || !currentUserId) return;
 
@@ -382,7 +377,7 @@ async function saveTx(e) {
     category: catVal,
     reason: reasonVal,
     tx_datetime: dateTimeVal ? new Date(dateTimeVal).toISOString() : new Date().toISOString(),
-    exclude_from_cycle: excludeVal
+    exclude_from_cycle: isExcluded
   };
 
   const { error } = await supabaseClient.from('transactions').insert([payload]);
@@ -392,7 +387,7 @@ async function saveTx(e) {
   }
 
   closeModal('txModal');
-  showToast(excludeVal ? '✅ Καταχωρήθηκε (Εκτός ορίου Κύκλου)!' : '✅ Η συναλλαγή καταχωρήθηκε!');
+  showToast(isExcluded ? '✅ Καταχωρήθηκε (Εκτός Ορίου Κύκλου)!' : '✅ Η συναλλαγή καταχωρήθηκε!');
   await loadUserData();
 }
 
@@ -417,12 +412,12 @@ function setViewMode(mode) {
   analysisMode = mode;
   document.getElementById('viewModeCycle').className = `view-btn ${mode === 'cycle' ? 'active' : ''}`;
   document.getElementById('viewModeMonth').className = `view-btn ${mode === 'month' ? 'active' : ''}`;
-  
+
   const cBtn = document.getElementById('cycleSettingsBtn');
   if (cBtn) {
     cBtn.style.display = mode === 'cycle' ? 'inline-flex' : 'none';
   }
-  
+
   renderApp();
 }
 
@@ -531,7 +526,7 @@ function getActiveMonth(now = new Date()) {
 function renderApp() {
   if (!currentUserId) return;
 
-  // 1. Υπολογισμός συνολικού διαθέσιμου υπολοίπου (Περιλαμβάνει ΟΛΑ τα έσοδα και ΟΛΑ τα έξοδα)
+  // 1. Υπολογισμός συνολικού διαθέσιμου υπολοίπου (Περιλαμβάνει ΟΛΕΣ τις συναλλαγές, ακόμα και τις εξαιρεμένες από τον κύκλο)
   let total = initialBalance;
   transactions.forEach(t => {
     if (t.type === 'income') total += t.amount;
@@ -543,4 +538,302 @@ function renderApp() {
     balEl.innerHTML = '••••,•• €';
   } else {
     const { intPart, decPart, isNegative } = formatCurrency(total);
-    balEl.inner
+    balEl.innerHTML = `${isNegative ? '-' : ''}${intPart},<span class="decimals">${decPart} €</span>`;
+  }
+
+  const { intPart: iInt, decPart: iDec, isNegative: iNeg } = formatCurrency(initialBalance);
+  const initBalEl = document.getElementById('initialBalanceBadge');
+  if (initBalEl) initBalEl.innerText = `${iNeg ? '-' : ''}${iInt},${iDec} €`;
+
+  // 2. Επιλογή περιόδου (Κύκλος ή Ημερολογιακός Μήνας)
+  const now = new Date();
+  let period;
+  if (analysisMode === 'cycle') {
+    period = getActiveCycle(now, cycleStartDay);
+    document.getElementById('budgetCycleTitle').innerText = `🔄 Κύκλος: ${period.label}`;
+    document.getElementById('cycleSpentLabel').innerText = 'Έξοδα Κύκλου';
+    document.getElementById('chartPeriodSubtitle').innerText = `(${period.label})`;
+  } else {
+    period = getActiveMonth(now);
+    document.getElementById('budgetCycleTitle').innerText = `📅 Μήνας: ${period.label}`;
+    document.getElementById('cycleSpentLabel').innerText = 'Έξοδα Μήνα';
+    document.getElementById('chartPeriodSubtitle').innerText = `(${period.label})`;
+  }
+
+  const cBadge = document.getElementById('cycleStartDayBadge');
+  if (cBadge) cBadge.innerText = cycleStartDay;
+
+  // 3. Υπολογισμός εξόδων περιόδου (Αγνοεί όσα έξοδα έχουν excludeFromCycle === true)
+  let periodSpent = 0;
+  transactions.forEach(t => {
+    const tDate = new Date(t.date);
+    if (t.type === 'expense' && !t.excludeFromCycle && tDate >= period.start && tDate <= period.end) {
+      periodSpent += t.amount;
+    }
+  });
+
+  const remaining = budgetLimit - periodSpent;
+  const percent = budgetLimit > 0 ? Math.min(100, Math.round((periodSpent / budgetLimit) * 100)) : 0;
+
+  const { intPart: sInt, decPart: sDec } = formatCurrency(periodSpent);
+  const spentEl = document.getElementById('cycleSpentVal');
+  if (spentEl) spentEl.innerText = `${sInt},${sDec} €`;
+
+  const { intPart: rInt, decPart: rDec, isNegative: rNeg } = formatCurrency(remaining);
+  const remEl = document.getElementById('cycleRemainingVal');
+  if (remEl) {
+    remEl.innerText = `${rNeg ? '-' : ''}${rInt},${rDec} €`;
+    remEl.style.color = remaining < 0 ? 'var(--accent-red)' : (remaining < 200 ? 'var(--accent-yellow)' : 'var(--text-white)');
+  }
+
+  const pEl = document.getElementById('cyclePercentVal');
+  if (pEl) pEl.innerText = `${percent}%`;
+
+  const barFill = document.getElementById('budgetProgressBar');
+  if (barFill) {
+    barFill.style.width = `${percent}%`;
+    if (percent >= 100) barFill.style.backgroundColor = 'var(--accent-red)';
+    else if (percent >= 75) barFill.style.backgroundColor = 'var(--accent-yellow)';
+    else barFill.style.backgroundColor = 'var(--accent-green)';
+  }
+
+  const { intPart: lInt, decPart: lDec } = formatCurrency(budgetLimit);
+  const limBadge = document.getElementById('budgetLimitBadge');
+  if (limBadge) limBadge.innerText = `Όριο: ${lInt},${lDec} €`;
+  const topLim = document.getElementById('topLimitBtn');
+  if (topLim) topLim.innerText = `Όριο: ${lInt}€`;
+
+  // 4. Λίστα συναλλαγών
+  const filtered = transactions.filter(t => selectedCat === 'all' || t.category === selectedCat);
+  const listEl = document.getElementById('transactionList');
+
+  if (listEl) {
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Δεν υπάρχουν συναλλαγές σε αυτή την κατηγορία.<br>Πάτα <b>+ Νέα Συναλλαγή</b> για καταχώρηση!</div>';
+    } else {
+      const iconColors = {
+        'Ενοίκιο': 'red',
+        'Λογαριασμοί': 'orange',
+        'Supermarket': 'teal',
+        'Γυμναστήριο': 'purple',
+        'Έξοδοι': 'blue',
+        'Μετακίνηση': 'blue',
+        'Μισθοδοσία': 'green',
+        'Άλλο': 'orange'
+      };
+
+      listEl.innerHTML = filtered.map(t => {
+        const isIncome = t.type === 'income';
+        const color = iconColors[t.category] || (isIncome ? 'green' : 'blue');
+        const sign = isIncome ? '+' : '-';
+        const amountClass = isIncome ? 'income' : 'expense';
+        const { intPart, decPart } = formatCurrency(t.amount);
+        const iconChar = t.category === 'Ενοίκιο' ? '🏠' : (t.category === 'Γυμναστήριο' ? '🥊' : (t.category === 'Supermarket' ? '🛒' : (t.category === 'Λογαριασμοί' ? '💡' : (t.category === 'Έξοδοι' ? '☕' : (t.title[0] || '€')))));
+
+        const d = new Date(t.date);
+        const dateFormatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
+        const timeFormatted = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const excludedTag = t.excludeFromCycle ? '<span class="tx-badge-excluded">Εκτός Ορίου</span>' : '';
+
+        return `
+          <div class="tx-item">
+            <div class="tx-left">
+              <div class="tx-icon-badge tx-icon-${color}">${iconChar}</div>
+              <div class="tx-details">
+                <div class="tx-name">${t.title} ${excludedTag}</div>
+                <div class="tx-meta">${dateFormatted} • ${timeFormatted} • ${t.reason || t.category || ''}</div>
+              </div>
+            </div>
+            <div class="tx-right">
+              <div class="tx-amt ${amountClass}">${sign} ${intPart},${decPart} €</div>
+              <button class="del-btn" onclick="deleteTx(${t.id})" title="Διαγραφή">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  // 5. Ανανέωση Γραφήματος
+  renderChart();
+}
+
+/* ================= CHART RENDERING ================= */
+function renderChart() {
+  const canvas = document.getElementById('expensesChart');
+  const emptyMsg = document.getElementById('chartEmptyMsg');
+  if (!canvas) return;
+
+  const now = new Date();
+  const period = analysisMode === 'cycle' ? getActiveCycle(now, cycleStartDay) : getActiveMonth(now);
+
+  const catTotals = {};
+  transactions.forEach(t => {
+    const tDate = new Date(t.date);
+    // Εξαιρούμε από το γράφημα του κύκλου/μήνα όσα έξοδα έχουν σημειωθεί εκτός ορίου
+    if (t.type === 'expense' && !t.excludeFromCycle && tDate >= period.start && tDate <= period.end) {
+      catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+    }
+  });
+
+  const categories = Object.keys(catTotals);
+  const dataValues = Object.values(catTotals);
+
+  if (categories.length === 0) {
+    canvas.style.display = 'none';
+    if (emptyMsg) emptyMsg.style.display = 'block';
+    if (expensesChartInstance) {
+      expensesChartInstance.destroy();
+      expensesChartInstance = null;
+    }
+    return;
+  }
+
+  canvas.style.display = 'block';
+  if (emptyMsg) emptyMsg.style.display = 'none';
+
+  const colorMap = {
+    'Ενοίκιο': '#ff5252',
+    'Λογαριασμοί': '#e67e22',
+    'Supermarket': '#1abc9c',
+    'Γυμναστήριο': '#9b59b6',
+    'Έξοδοι': '#3498db',
+    'Μετακίνηση': '#2980b9',
+    'Μισθοδοσία': '#2ecc71',
+    'Άλλο': '#f39c12'
+  };
+
+  const bgColors = categories.map(cat => colorMap[cat] || '#8c93a3');
+
+  if (expensesChartInstance) {
+    expensesChartInstance.destroy();
+  }
+
+  const ctx = canvas.getContext('2d');
+
+  if (chartType === 'doughnut') {
+    expensesChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: categories,
+        datasets: [{
+          data: dataValues,
+          backgroundColor: bgColors,
+          borderWidth: 2,
+          borderColor: '#15181e',
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#ffffff',
+              boxWidth: 12,
+              font: { size: 11, family: '-apple-system, sans-serif' }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                return ` ${context.label}: ${val.toFixed(2)} €`;
+              }
+            }
+          }
+        },
+        cutout: '62%'
+      }
+    });
+  } else {
+    expensesChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: categories,
+        datasets: [{
+          label: 'Έξοδα (€)',
+          data: dataValues,
+          backgroundColor: bgColors,
+          borderRadius: 6,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: { color: '#8c93a3', font: { size: 11 } },
+            grid: { display: false }
+          },
+          y: {
+            ticks: {
+              color: '#8c93a3',
+              font: { size: 11 },
+              callback: value => value + '€'
+            },
+            grid: { color: '#272c38' }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const val = context.raw || 0;
+                return ` ${val.toFixed(2)} €`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
+function filterCategory(cat, el) {
+  selectedCat = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderApp();
+}
+
+function setType(type) {
+  currentType = type;
+  const bExp = document.getElementById('btnExpense');
+  const bInc = document.getElementById('btnIncome');
+  const exclGroup = document.getElementById('excludeCycleGroup');
+
+  if (type === 'expense') {
+    bExp.className = 'seg-btn active expense';
+    bInc.className = 'seg-btn';
+    if (exclGroup) exclGroup.style.display = 'block';
+  } else {
+    bInc.className = 'seg-btn active income';
+    bExp.className = 'seg-btn';
+    if (exclGroup) exclGroup.style.display = 'none';
+  }
+}
+
+const toggleEye = document.getElementById('toggleEyeBtn');
+if (toggleEye) {
+  toggleEye.addEventListener('click', () => {
+    isHidden = !isHidden;
+    renderApp();
+  });
+}
+
+const scrollBox = document.getElementById('catScroll');
+if (scrollBox) {
+  scrollBox.addEventListener('wheel', (evt) => {
+    if (evt.deltaY !== 0) {
+      evt.preventDefault();
+      scrollBox.scrollLeft += evt.deltaY;
+    }
+  }, { passive: false });
+}
