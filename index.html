@@ -115,7 +115,7 @@
           <div class="balance-row">
             <div class="balance-amount" id="balanceDisplay">0,<span class="decimals">00 €</span></div>
             <button class="eye-btn" id="toggleEyeBtn" title="Απόκρυψη / Εμφάνιση">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
 
@@ -191,7 +191,7 @@
           </div>
           <div class="chart-container">
             <canvas id="expensesChart"></canvas>
-            <div class="chart-empty-msg" id="chartEmptyMsg" style="display: none;">Δεν υπάρχουν έξοδα εντός ορίου για αυτή την περίοδο.</div>
+            <div class="chart-empty-msg" id="chartEmptyMsg" style="display: none;">Δεν υπάρχουν έξοδα για αυτή την περίοδο.</div>
           </div>
         </div>
       </section>
@@ -269,14 +269,14 @@
           <input type="datetime-local" class="f-input" id="txDateTime" required>
         </div>
 
-        <!-- Επιλογή 1: Εξαίρεση από το όριο Κύκλου / Μήνα -->
-        <div class="f-group exclude-cycle-box" id="excludeCycleGroup">
-          <label class="checkbox-label">
+        <!-- Επιλογή Εξαίρεσης από το όριο Κύκλου/Μήνα -->
+        <div class="f-group checkbox-group" id="excludeCycleGroup">
+          <label class="custom-checkbox-label">
             <input type="checkbox" id="txExcludeCycle">
-            <span class="custom-checkbox"></span>
-            <div class="checkbox-text-col">
-              <span class="checkbox-title">Εξαίρεση από το όριο Κύκλου / Μήνα</span>
-              <span class="checkbox-sub">Αφαιρείται από το υπόλοιπο, αλλά δεν επηρεάζει το μηνιαίο όριο (π.χ. έξτρα χρήματα)</span>
+            <span class="checkmark"></span>
+            <div class="checkbox-text">
+              <span>Εξαίρεση από το όριο Κύκλου / Μήνα</span>
+              <small>Αφαιρείται από το υπόλοιπο, αλλά δεν μετράει στα έξοδα του κύκλου</small>
             </div>
           </label>
         </div>
