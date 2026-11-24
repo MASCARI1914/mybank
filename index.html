@@ -108,7 +108,7 @@
           <div class="balance-header-row">
             <div class="balance-label">Διαθέσιμο Υπόλοιπο (Σύνολο)</div>
             <button class="subtle-link-btn" onclick="openBalanceModal()" title="Ρύθμιση αρχικού ποσού">
-              ⚙️️ Αρχικό: <span id="initialBalanceBadge">0,00 €</span>
+              ⚙️ Αρχικό: <span id="initialBalanceBadge">0,00 €</span>
             </button>
           </div>
           
@@ -191,7 +191,7 @@
           </div>
           <div class="chart-container">
             <canvas id="expensesChart"></canvas>
-            <div class="chart-empty-msg" id="chartEmptyMsg" style="display: none;">Δεν υπάρχουν έξοδα για αυτή την περίοδο.</div>
+            <div class="chart-empty-msg" id="chartEmptyMsg" style="display: none;">Δεν υπάρχουν έξοδα εντός ορίου για αυτή την περίοδο.</div>
           </div>
         </div>
       </section>
@@ -269,13 +269,25 @@
           <input type="datetime-local" class="f-input" id="txDateTime" required>
         </div>
 
+        <!-- Επιλογή 1: Εξαίρεση από το όριο Κύκλου / Μήνα -->
+        <div class="f-group exclude-cycle-box" id="excludeCycleGroup">
+          <label class="checkbox-label">
+            <input type="checkbox" id="txExcludeCycle">
+            <span class="custom-checkbox"></span>
+            <div class="checkbox-text-col">
+              <span class="checkbox-title">Εξαίρεση από το όριο Κύκλου / Μήνα</span>
+              <span class="checkbox-sub">Αφαιρείται από το υπόλοιπο, αλλά δεν επηρεάζει το μηνιαίο όριο (π.χ. έξτρα χρήματα)</span>
+            </div>
+          </label>
+        </div>
+
         <button type="submit" class="submit-btn">Καταχώρηση</button>
         <button type="button" class="cancel-btn" onclick="closeModal('txModal')">Ακύρωση</button>
       </form>
     </div>
   </div>
 
-  <!-- Modal 2: Ρύθμιση Αρχικού Ποσού (Αντικατάσταση prompt) -->
+  <!-- Modal 2: Ρύθμιση Αρχικού Ποσού -->
   <div class="modal-overlay" id="balanceModal" onclick="closeOverlay(event, 'balanceModal')">
     <div class="modal-box small-modal">
       <div class="modal-title">⚙️ Αρχικό Υπόλοιπο</div>
@@ -292,7 +304,7 @@
     </div>
   </div>
 
-  <!-- Modal 3: Ρύθμιση Μηνιαίου Ορίου (Αντικατάσταση prompt) -->
+  <!-- Modal 3: Ρύθμιση Μηνιαίου Ορίου -->
   <div class="modal-overlay" id="limitModal" onclick="closeOverlay(event, 'limitModal')">
     <div class="modal-box small-modal">
       <div class="modal-title">🎯 Μηνιαίο Όριο Εξόδων</div>
@@ -309,7 +321,7 @@
     </div>
   </div>
 
-  <!-- Modal 4: Ημερολόγιο / Επιλογή Έναρξης Κύκλου (Interactive Calendar Day Picker) -->
+  <!-- Modal 4: Ημερολόγιο / Επιλογή Έναρξης Κύκλου -->
   <div class="modal-overlay" id="cycleCalendarModal" onclick="closeOverlay(event, 'cycleCalendarModal')">
     <div class="modal-box calendar-modal">
       <div class="modal-title">📅 Έναρξη Μηνιαίου Κύκλου</div>
@@ -320,10 +332,7 @@
         <b id="calendarPreviewLabel">Κάθε 12η του μήνα</b>
       </div>
 
-      <!-- Πλέγμα Ημερών Ημερολογίου (1 έως 28) -->
-      <div class="calendar-grid" id="calendarDaysGrid">
-        <!-- Παράγεται δυναμικά από τη JavaScript -->
-      </div>
+      <div class="calendar-grid" id="calendarDaysGrid"></div>
 
       <div class="modal-actions-row">
         <button type="button" class="submit-btn" onclick="confirmCycleSelection()">Επιβεβαίωση</button>
