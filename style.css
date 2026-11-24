@@ -788,29 +788,24 @@ body {
   gap: 3px;
 }
 
-.tx-name-row {
+.tx-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-white);
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.tx-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-white);
-}
-
-.badge-excluded {
+.tx-badge-excluded {
   background: rgba(52, 152, 219, 0.18);
-  border: 1px solid rgba(52, 152, 219, 0.45);
+  border: 1px solid rgba(52, 152, 219, 0.4);
   color: #5dade2;
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
 }
 
 .tx-meta {
@@ -856,7 +851,7 @@ body {
   line-height: 1.6;
 }
 
-/* ================= MODALS & CHECKBOX STYLES ================= */
+/* ================= MODALS & CALENDAR STYLES ================= */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -978,70 +973,45 @@ body {
   border-color: #55627a;
 }
 
-/* Custom Checkbox for Exclude from Cycle */
-.exclude-cycle-box {
-  background: #11151d;
-  border: 1px solid #262e3d;
+/* Custom Checkbox Styling */
+.checkbox-group {
+  background: #12151c;
+  border: 1px solid #262c3a;
   border-radius: 12px;
-  padding: 12px;
-  transition: border-color 0.2s;
+  padding: 12px 14px;
+  margin-top: 4px;
 }
 
-.exclude-cycle-box:hover {
-  border-color: #3a4861;
-}
-
-.checkbox-label {
+.custom-checkbox-label {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
 }
 
-.checkbox-label input[type="checkbox"] {
-  display: none;
-}
-
-.custom-checkbox {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  border: 2px solid #48546e;
-  background: #181d27;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.custom-checkbox-label input[type="checkbox"] {
+  accent-color: var(--accent-yellow);
+  width: 18px;
+  height: 18px;
   margin-top: 2px;
-  transition: all 0.2s;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.checkbox-label input[type="checkbox"]:checked + .custom-checkbox {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
-}
-
-.checkbox-label input[type="checkbox"]:checked + .custom-checkbox::after {
-  content: '✓';
-  color: #fff;
-  font-weight: 900;
-  font-size: 13px;
-}
-
-.checkbox-text-col {
+.checkbox-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.checkbox-title {
+.checkbox-text span {
   font-size: 13px;
   font-weight: 700;
   color: var(--text-white);
 }
 
-.checkbox-sub {
+.checkbox-text small {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.3;
