@@ -1,0 +1,363 @@
+/* =====================================================================
+   SUMP COMPETENCE CENTRE - EXTERNAL BILINGUAL ENGINE (EL <-> EN)
+   ===================================================================== */
+(function () {
+  var STORAGE_KEY = 'sump_site_lang';
+  var currentLang = localStorage.getItem(STORAGE_KEY) || 'el';
+
+  var exactPairs = [
+    ["Κέντρο Υποστήριξης ΣΒΑΚ - SUMP Competence Centre", "SUMP Competence Centre - HIT / CERTH"],
+    ["Κέντρο Υποστήριξης ΣΒΑΚ", "SUMP Competence Centre"],
+    ["Ινστιτούτο Βιώσιμης Κινητικότητας και Δικτύων Μεταφορών (Ι.ΜΕ.Τ.)", "Hellenic Institute of Transport (HIT)"],
+    ["ΙΜΕΤ - Hellenic Institute of Transport", "HIT - Hellenic Institute of Transport"],
+    ["Εθνικό Κέντρο Έρευνας και Τεχνολογικής Ανάπτυξης (Ε.Κ.Ε.Τ.Α.)", "Centre for Research and Technology Hellas (CERTH)"],
+    ["ΕΚΕΤΑ - CERTH", "CERTH - Centre for Research and Technology Hellas"],
+    ["Επιστροφή στην Αρχική", "Return to Home"],
+    ["Άνοιγμα μενού πλοήγησης", "Open navigation menu"],
+    ["Ημαθία", "Imathia"],
+    ["Θεσσαλονίκη", "Thessaloniki"],
+    ["Κιλκίς", "Kilkis"],
+    ["Πέλλα", "Pella"],
+    ["Πιερία", "Pieria"],
+    ["Σέρρες", "Serres"],
+    ["Χαλκιδική", "Chalkidiki"],
+    ["ΗΛΕΚΤΡΟΝΙΚΗ ΠΛΑΤΦΟΡΜΑ ΣΧΕΔΙΩΝ ΒΙΩΣΙΜΗΣ ΑΣΤΙΚΗΣ", "HELLENIC ELECTRONIC PLATFORM FOR SUSTAINABLE URBAN"],
+    ["ΚΙΝΗΤΙΚΟΤΗΤΑΣ (Η.Π.Σ.Β.Α.Κ.)", "MOBILITY PLANS (H.P.S.V.A.K.)"],
+    ["Μετάβαση στην Η.Π.Σ.Β.Α.Κ.", "Visit the National SUMP Platform"],
+    ["Ελλάδα (25)", "Greece (25)"],
+    ["Θεσσαλονίκη (5)", "Thessaloniki (5)"],
+    ["Όλη η Ευρώπη", "All of Europe"],
+    ["Αρχική προβολή Ευρώπης", "Reset Europe view"],
+    ["Πληροφορίες χάρτη", "Map information"],
+    ["Εναλλαγή υποβάθρου (Χάρτης / Δορυφόρος)", "Toggle basemap (Map / Satellite)"],
+    ["Εστίαση στην Κεντρική Μακεδονία", "Focus on Central Macedonia"],
+    ["Μεγέθυνση (+)", "Zoom in (+)"],
+    ["Σμίκρυνση (-)", "Zoom out (-)"],
+    ["Πλήρης οθόνη", "Fullscreen"],
+    ["Εκτύπωση χάρτη", "Print map"],
+    ["Έδρα / Διεύθυνση:", "Headquarters / Address:"],
+    ["Έδρα / Διεύθυνση", "Headquarters / Address"],
+    ["Τηλεφωνικό Κέντρο", "Switchboard / Phone"],
+    ["Ηλεκτρονικό Ταχυδρομείο (Email)", "Email Address"],
+    ["ΕΠΙΣΗΜΟΙ ΙΣΤΟΤΟΠΟΙ & ΠΛΑΤΦΟΡΜΕΣ:", "OFFICIAL WEBSITES & PLATFORMS:"],
+    ["Send us a message / Αποστολή Μηνύματος", "Send us a message"],
+    ["Ονοματεπώνυμο / Full Name", "Full Name"],
+    ["π.χ. Γιώργος Παπαδόπουλος", "e.g. John Smith"],
+    ["Φορέας / Δήμος (Organization)", "Organization / Municipality"],
+    ["π.χ. Δήμος Θεσσαλονίκης", "e.g. Municipality of Thessaloniki"],
+    ["Θέμα / Subject", "Subject"],
+    ["Επιλέξτε θέμα...", "Select a subject..."],
+    ["Τεχνική Υποστήριξη ΣΒΑΚ (SUMP Guidance)", "SUMP Technical Guidance"],
+    ["Εκπαίδευση & Ημερίδες (Workshops & Training)", "Workshops & Training"],
+    ["Εργαλεία & Βάση Δεδομένων (Tools & Database)", "Tools & Database"],
+    ["Ερευνητική Συνεργασία / Έργα ΕΕ", "Research Collaboration / EU Projects"],
+    ["Γενικό Ερώτημα (General Inquiry)", "General Inquiry"],
+    ["Μήνυμα / Message", "Message"],
+    ["Γράψτε εδώ το μήνυμα ή το ερώτημά σας...", "Write your message or inquiry here..."],
+    ["Τοποθεσία & Οδηγίες Πρόσβασης", "Location & Access Instructions"],
+    ["Εστίαση στο Ι.ΜΕ.Τ. / Ε.Κ.Ε.Τ.Α.", "Focus on HIT / CERTH"],
+    ["Χάρτης / Δορυφόρος", "Map / Satellite"],
+    ["Ι.ΜΕ.Τ. / Ε.Κ.Ε.Τ.Α. (HIT / CERTH)", "HIT / CERTH Headquarters"],
+    ["ΔΗΜΟΣΙΑ ΣΥΓΚΟΙΝΩΝΙΑ", "PUBLIC TRANSPORT"],
+    ["Πρόσβαση με Λεωφορείο (ΟΑΣΘ)", "Access by Bus (OASTH)"],
+    ["ΟΔΙΚΟ ΔΙΚΤΥΟ & ΣΤΑΘΜΕΥΣΗ", "ROAD NETWORK & PARKING"],
+    ["Πρόσβαση με Αυτοκίνητο", "Access by Car"],
+    ["ΥΠΕΡΑΣΤΙΚΕΣ ΣΥΝΔΕΣΕΙΣ", "INTERCITY CONNECTIONS"],
+    ["Από Αεροδρόμιο «Μακεδονία» (SKG)", "From Makedonia Airport (SKG)"],
+    ["Ημέρες Αστικής Κινητικότητας 2025 (Urban Mobility Days - UMD)", "Urban Mobility Days 2025 (UMD)"],
+    ["12ο Διεθνές Συνέδριο για την Έρευνα στις Μεταφορές (ICTR 2025)", "12th International Congress on Transportation Research (ICTR 2025)"],
+    ["Ευρωπαϊκή Εβδομάδα Βιώσιμης Ανάπτυξης 2025", "European Sustainable Development Week 2025 (ESDW)"],
+    ["Ευρωπαϊκή Εβδομάδα Κινητικότητας 2025 (EUROPEANMOBILITYWEEK)", "European Mobility Week 2025 (EUROPEANMOBILITYWEEK)"]
+  ];
+
+  var phrasePairs = [
+    ["Ν. 5306/2026, ΦΕΚ Α΄88/08.06.2026", "Law 5306/2026, Gov. Gazette 88/A/08.06.2026"],
+    ["Κώδικας Χωροταξίας–Πολεοδομίας", "Spatial and Urban Planning Code"],
+    ["47 Α΄/30.3.2026 - Εκσυγχρονισμός και αναβάθμιση μεταφορών: Τεχνικός έλεγχος - Εγκαταστάσεις εξυπηρέτησης οχημάτων, συγκοινωνιακοί φορείς, επιβατικές - οδικές - εμπορευματικές μεταφορές, ηλεκτροκίνηση, Σχέδια Βιώσιμης Αστικής Κινητικότητας, ρυθμίσεις για τις πρότυπες προτάσεις, Αρχή Πολιτικής Αεροπορίας και άλλες διατάξεις", "47/A/30.03.2026 - Modernization and upgrading of transport: Roadworthiness testing, vehicle service facilities, public transport authorities, passenger & freight transport, electromobility, Sustainable Urban Mobility Plans (SUMPs), Hellenic Civil Aviation Authority and other provisions"],
+    ["Σχέδια Βιώσιμης Αστικής Κινητικότητας (ΣΒΑΚ) Περιφερειακής Ενότητας Ημαθίας:", "Sustainable Urban Mobility Plans (SUMPs) in the Regional Unit of Imathia:"],
+    ["Μητροπολιτική Ενότητα Θεσσαλονίκης:", "Metropolitan Unit of Thessaloniki:"],
+    ["ΣΒΑΚ Περιφερειακής Ενότητας Κιλκίς:", "SUMPs in the Regional Unit of Kilkis:"],
+    ["ΣΒΑΚ Περιφερειακής Ενότητας Πέλλας:", "SUMPs in the Regional Unit of Pella:"],
+    ["ΣΒΑΚ Περιφερειακής Ενότητας Πιερίας:", "SUMPs in the Regional Unit of Pieria:"],
+    ["ΣΒΑΚ Περιφερειακής Ενότητας Σερρών:", "SUMPs in the Regional Unit of Serres:"],
+    ["ΣΒΑΚ Περιφερειακής Ενότητας Χαλκιδικής:", "SUMPs in the Regional Unit of Chalkidiki:"],
+    ["Ολοκληρωμένο ΣΒΑΚ & εφαρμογή μέτρων ήπιας κυκλοφορίας και πεζοδρομήσεων στο ιστορικό κέντρο.", "Completed SUMP & implementation of traffic calming measures and pedestrianization in the historic center."],
+    ["Εγκεκριμένο ΣΒΑΚ με έμφαση στην προσβασιμότητα και τις υψομετρικές συνδέσεις.", "Approved SUMP focusing on accessibility and elevation links."],
+    ["Στρατηγικός σχεδιασμός αστικής κινητικότητας και ποδηλατικών διαδρομών.", "Strategic urban mobility planning and cycling network development."],
+    ["Ολοκληρωμένο ΣΒΑΚ, διαλειτουργικότητα με το Μετρό Θεσσαλονίκης, δίκτυο λεωφορειολωρίδων και αναπλάσεις άξονα παραλίας.", "Completed SUMP, interoperability with the Thessaloniki Metro, bus lane network and waterfront redevelopment."],
+    ["ΣΒΑΚ με ολοκλήρωση σταθμών μετεπιβίβασης Μετρό και θαλάσσιας αστικής συγκοινωνίας.", "SUMP integrating Metro transfer stations and urban waterborne transport."],
+    ["ΣΒΑΚ με επίκεντρο το Μητροπολιτικό Πάρκο και τις πράσινες διαδρομές δυτικής Θεσσαλονίκης.", "SUMP centered around the Metropolitan Park and green corridors in western Thessaloniki."],
+    ["ΣΒΑΚ περιαστικής και διαδημοτικής συνδεσιμότητας.", "SUMPs focusing on peri-urban and inter-municipal connectivity."],
+    ["Σχέδιο Βιώσιμης Αστικής Κινητικότητας με έμφαση στην ενίσχυση της πεζής μετακίνησης και αστικής ανάπλασης του εμπορικού κέντρου.", "Sustainable Urban Mobility Plan emphasizing pedestrian mobility and commercial center regeneration."],
+    ["Στρατηγικός σχεδιασμός διασυνοριακών ροών και τοπικής προσβασιμότητας.", "Strategic planning for cross-border flows and local accessibility."],
+    ["ΣΒΑΚ προσανατολισμένο στον τουρισμό, τη διαχείριση της στάθμευσης και την ανάδειξη του υδάτινου στοιχείου.", "SUMP oriented towards sustainable tourism, parking management and highlighting water features."],
+    ["Παρεμβάσεις αναδιοργάνωσης της κυκλοφορίας και βελτίωσης της οδικής ασφάλειας.", "Traffic reorganization interventions and road safety improvements."],
+    ["ΣΒΑΚ με εκτεταμένο δίκτυο ποδηλατοδρόμων και συνδέσεις με το παραλιακό μέτωπο.", "SUMP featuring an extensive cycling network and coastal front connections."],
+    ["Βιώσιμη κινητικότητα σε αρχαιολογικούς χώρους και τουριστικούς πόλους.", "Sustainable mobility connecting archaeological sites and tourist hubs."],
+    ["Εγκεκριμένο ΣΒΑΚ με εφαρμογή έξυπνων διαβάσεων και ηλεκτροκίνησης στη δημοτική συγκοινωνία.", "Approved SUMP implementing smart pedestrian crossings and electromobility in municipal transit."],
+    ["Σχέδιο αστικής και διασυνοριακής προσβασιμότητας.", "Urban and cross-border accessibility plan."],
+    ["ΣΒΑΚ ορεινής και παραθαλάσσιας κινητικότητας.", "SUMP for mountainous and coastal mobility."],
+    ["Διαχείριση κυκλοφορίας και εποχικών αιχμών τουρισμού.", "Traffic management and seasonal tourism peak planning."],
+    ["Η εφαρμογή του Circulation Plan της Γάνδης διαχώρισε την πόλη σε τομείς, εξαλείφοντας τη διαμπερή κυκλοφορία ΙΧ και αυξάνοντας τη χρήση ποδηλάτου κατά 60%.", "Ghent's Circulation Plan divided the city into sectors, eliminating through-traffic in the center and increasing cycling by 60%."],
+    ["Πρωτοπόρο μοντέλο σταθμών κοινόχρηστης κινητικότητας (mobil.punkte) συνδεδεμένων απευθείας με στάσεις τραμ και λεωφορείων, απελευθερώνοντας χιλιάδες θέσεις στάθμευσης.", "Pioneering shared mobility stations (mobil.punkte) directly connected to tram and bus stops, freeing up thousands of on-street parking spaces."],
+    ["Επίπεδο 1: Προβολή ανά Χώρα ΕΕ (κάνε κλικ σε οποιονδήποτε αριθμό ή πινέζα για εστίαση)", "Level 1: EU Country View (click on any number or pin to zoom in)"],
+    ["Επίπεδο 1 (Χώρες ΕΕ): Κάνε κλικ σε οποιονδήποτε αριθμό χώρας ή πινέζα για εστίαση", "Level 1 (EU Countries): Click on any country number or pin to zoom in"],
+    ["Επίπεδο 2 (Περιφέρειες): Κάνε κλικ στον αριθμό μιας Περιφέρειας (π.χ. Θεσσαλονίκη: 5) για εμφάνιση των Πόλεων", "Level 2 (Regions): Click on a Regional cluster (e.g. Thessaloniki: 5) to view Municipalities"],
+    ["Επίπεδο 3 (Πόλεις & Δήμοι): Πάτησε σε οποιαδήποτε πινέζα για Διεύθυνση, Κατάσταση ΣΒΑΚ & Συνδέσμους", "Level 3 (Cities & Municipalities): Click on any pin for Address, SUMP Status & Links"],
+    ["Οδηγίες Πλοήγησης Χάρτη ΣΒΑΚ (424 Πόλεις):", "SUMP Map Navigation Guide (424 Cities):"],
+    ["Επίπεδο 1 (Χώρες ΕΕ):", "Level 1 (EU Countries):"],
+    ["Συνολικός αριθμός καταχωρημένων ΣΒΑΚ ανά κράτος-μέλος.", "Total number of registered SUMPs per EU Member State."],
+    ["Επίπεδο 2 (Περιφέρειες / Νομοί):", "Level 2 (Regions / Regional Units):"],
+    ["Αριθμός ΣΒΑΚ ανά Περιφέρεια (π.χ. Θεσσαλονίκη: 5, Ημαθία: 3, Τενερίφη: 2).", "Number of SUMPs per Region (e.g. Thessaloniki: 5, Imathia: 3, Tenerife: 2)."],
+    ["Επίπεδο 3 (Δήμοι / Πόλεις):", "Level 3 (Municipalities / Cities):"],
+    ["Ακριβείς πινέζες σε κάθε πόλη της ΕΕ με διεύθυνση, κατάσταση ΣΒΑΚ και επίσημους συνδέσμους.", "Exact pins for every EU city with address, SUMP status and official links."],
+    ["Υποστηρίζουμε τους Οργανισμούς Τοπικής Αυτοδιοίκησης (ΟΤΑ), τους φορείς χάραξης πολιτικής και τους επαγγελματίες μεταφορών στον σχεδιασμό, την υλοποίηση και την παρακολούθηση Σχεδίων Βιώσιμης Αστικής Κινητικότητας (ΣΒΑΚ).", "We support Local Authorities (Municipalities), policymakers and transport professionals in designing, implementing and monitoring Sustainable Urban Mobility Plans (SUMPs)."],
+    ["Ινστιτούτο Βιώσιμης Κινητικότητας & Δικτύων Μεταφορών (Ι.ΜΕ.Τ. / Ε.Κ.Ε.Τ.Α.)", "Hellenic Institute of Transport (HIT / CERTH)"],
+    ["6ο χλμ. Χαριλάου - Θέρμης, Τ.Θ. 60361, 570 01 Θέρμη, Θεσσαλονίκη", "6th km Charilaou - Thermi Rd., P.O. Box 60361, 570 01 Thermi, Thessaloniki, Greece"],
+    ["6ο χλμ. Χαριλάου - Θέρμης,", "6th km Charilaou - Thermi Rd.,"],
+    ["570 01 Θέρμη, Θεσσαλονίκη", "570 01 Thermi, Thessaloniki"],
+    ["Δευτέρα – Παρασκευή, 09:00 – 17:00", "Monday - Friday, 09:00 - 17:00"],
+    ["Για ερωτήματα ΣΒΑΚ, εκπαιδευτικές δράσεις & συνεργασίες", "For SUMP inquiries, training activities & collaborations"],
+    ["Συμπληρώστε τη φόρμα και η ομάδα του Κέντρου Υποστήριξης ΣΒΑΚ θα επικοινωνήσει μαζί σας.", "Fill out the form below and the SUMP Competence Centre team will get back to you."],
+    ["Όλα τα πεδία με αστερίσκο (", "All fields marked with an asterisk ("],
+    [") είναι υποχρεωτικά.", ") are required."],
+    ["Συμφωνώ με την επεξεργασία των στοιχείων μου από το Ι.ΜΕ.Τ. / Ε.Κ.Ε.Τ.Α. αποκλειστικά για την απάντηση στο αίτημά μου.", "I agree to the processing of my personal data by HIT / CERTH exclusively for responding to my inquiry."],
+    ["Παρακαλώ συμπληρώστε το ονοματεπώνυμό σας.", "Please enter your full name."],
+    ["Παρακαλώ εισάγετε μια έγκυρη διεύθυνση email.", "Please enter a valid email address."],
+    ["Παρακαλώ συμπληρώστε τον Φορέα ή τον Δήμο σας.", "Please enter your Organization or Municipality."],
+    ["Παρακαλώ επιλέξτε ένα θέμα από τη λίστα.", "Please select a subject from the list."],
+    ["Παρακαλώ συμπληρώστε το μήνυμά σας (τουλάχιστον 10 χαρακτήρες).", "Please enter your message (at least 10 characters)."],
+    ["Για την αποστολή του μηνύματος απαιτείται να επιλέξετε ότι συμφωνείτε με την επεξεργασία των στοιχείων σας.", "You must agree to the processing of your data before sending your message."],
+    ["Εξυπηρέτηση από τις λεωφορειακές γραμμές", "Served by OASTH bus lines"],
+    ["Νο 66", "No. 66"],
+    ["(Χαριλάου – Θέρμη) και", "(Charilaou - Thermi) and"],
+    ["Νο 36", "No. 36"],
+    ["του ΟΑΣΘ, με στάση ακριβώς μπροστά στην κεντρική είσοδο του Ε.Κ.Ε.Τ.Α.", "with a bus stop located right in front of the CERTH main entrance."],
+    ["Άμεση πρόσβαση μέσω της οδού", "Direct access via"],
+    ["Χαριλάου – Θέρμης (6ο χλμ.)", "Charilaou - Thermi Rd. (6th km)"],
+    ["ή μέσω της Ε.Ο. Θεσσαλονίκης – Μουδανιών (έξοδος προς Θέρμη). Διατίθεται χώρος στάθμευσης επισκεπτών.", "or via the Thessaloniki - Moudania National Road (Thermi exit). Visitor parking is available on site."],
+    ["Οι εγκαταστάσεις βρίσκονται σε απόσταση περίπου", "Our facilities are located approximately"],
+    ["10 λεπτών (8 χλμ.)", "10 minutes (8 km)"],
+    ["από τον Κρατικό Αερολιμένα Θεσσαλονίκης «Μακεδονία» και 25 λεπτών από το κέντρο της πόλης.", "from Thessaloniki International Airport Makedonia (SKG) and 25 minutes from the city center."],
+    ["Δήμος Θεσσαλονίκης", "Municipality of Thessaloniki"],
+    ["Δήμος Καλαμαριάς", "Municipality of Kalamaria"],
+    ["Δήμος Παύλου Μελά", "Municipality of Pavlos Melas"],
+    ["Δήμος Πυλαίας - Χορτιάτη", "Municipality of Pylaia - Chortiatis"],
+    ["Δήμος Θέρμης", "Municipality of Thermi"],
+    ["Δήμος Βέροιας", "Municipality of Veria"],
+    ["Δήμος Ηρωικής Πόλης Νάουσας", "Municipality of Naoussa"],
+    ["Δήμος Αλεξάνδρειας", "Municipality of Alexandreia"],
+    ["Δήμος Κιλκίς", "Municipality of Kilkis"],
+    ["Δήμος Παιονίας", "Municipality of Paionia"],
+    ["Δήμος Έδεσσας", "Municipality of Edessa"],
+    ["Δήμος Πέλλας (Γιαννιτσά)", "Municipality of Pella (Giannitsa)"],
+    ["Δήμος Κατερίνης", "Municipality of Katerini"],
+    ["Δήμος Δίου - Ολύμπου", "Municipality of Dion - Olympos"],
+    ["Δήμος Σερρών", "Municipality of Serres"],
+    ["Δήμος Σιντικής", "Municipality of Sintiki"],
+    ["Δήμος Πολυγύρου", "Municipality of Polygyros"],
+    ["Δήμος Νέας Προποντίδας", "Municipality of Nea Propontida"],
+    ["Δήμος Αθηναίων", "Municipality of Athens"],
+    ["Δήμος Πειραιά", "Municipality of Piraeus"],
+    ["Δήμος Χαλανδρίου", "Municipality of Chalandri"],
+    ["Δήμος Λαρισαίων", "Municipality of Larissa"],
+    ["Δήμος Τρικκαίων", "Municipality of Trikala"],
+    ["Δήμος Ηρακλείου", "Municipality of Heraklion"],
+    ["Δήμος Χανίων", "Municipality of Chania"],
+    ["Μ.Ε. Θεσσαλονίκης", "Metropolitan Unit of Thessaloniki"],
+    ["Π.Ε. Ημαθίας", "Regional Unit of Imathia"],
+    ["Π.Ε. Κιλκίς", "Regional Unit of Kilkis"],
+    ["Π.Ε. Πέλλας", "Regional Unit of Pella"],
+    ["Π.Ε. Πιερίας", "Regional Unit of Pieria"],
+    ["Π.Ε. Σερρών", "Regional Unit of Serres"],
+    ["Π.Ε. Χαλκιδικής", "Regional Unit of Chalkidiki"],
+    ["Περιφέρεια Αττικής", "Region of Attica"],
+    ["Περιφέρεια Θεσσαλίας", "Region of Thessaly"],
+    ["Περιφέρεια Κρήτης", "Region of Crete"],
+    ["Ολοκληρωμένο ΣΒΑΚ — Σε Υλοποίηση", "Completed SUMP - In Implementation"],
+    ["Πρότυπο ΣΒΑΚ — Σε Υλοποίηση", "Model SUMP - In Implementation"],
+    ["Ολοκληρωμένο ΣΒΑΚ", "Completed SUMP"],
+    ["Εγκεκριμένο ΣΒΑΚ", "Approved SUMP"],
+    ["Πλατφόρμα Η.Π.Σ.Β.Α.Κ.", "National SUMP Platform"],
+    ["Οδηγίες Πλοήγησης (Google Maps)", "Get Directions (Google Maps)"],
+    ["Πλοήγηση Google Maps", "Google Maps Navigation"],
+    ["Αποστολή Μηνύματος", "Send Message"],
+    ["Περισσότερα", "Read more"],
+    ["Χάρτης", "Map"],
+    ["Ελλάδα", "Greece"],
+    ["ΘΕΣΣΑΛΟΝΙΚΗ", "THESSALONIKI"]
+  ];
+
+  function norm(s) {
+    return (s || '').replace(/\s+/g, ' ').trim();
+  }
+
+  var exactDict = {};
+  for (var i = 0; i < exactPairs.length; i++) {
+    exactDict[norm(exactPairs[i][0])] = exactPairs[i][1];
+  }
+
+  function createLangBtn(code) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sump-lang-btn';
+    btn.setAttribute('data-lang-btn', code);
+    btn.textContent = code.toUpperCase();
+    btn.addEventListener('click', function () {
+      window.setSumpLanguage(code);
+    });
+    return btn;
+  }
+
+  function injectHeaderLangSwitcher() {
+    var boxes = document.querySelectorAll('.sump-topbar-right');
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      if (box.querySelector('.sump-lang-switcher')) continue;
+      box.textContent = '';
+
+      var wrap = document.createElement('div');
+      wrap.className = 'sump-lang-switcher';
+
+      var sep = document.createElement('span');
+      sep.className = 'sump-lang-sep';
+      sep.textContent = '|';
+
+      wrap.appendChild(createLangBtn('el'));
+      wrap.appendChild(sep);
+      wrap.appendChild(createLangBtn('en'));
+      box.appendChild(wrap);
+    }
+    updateLangButtonsUI();
+  }
+
+  function updateLangButtonsUI() {
+    var btns = document.querySelectorAll('[data-lang-btn]');
+    for (var i = 0; i < btns.length; i++) {
+      var b = btns[i];
+      if (b.getAttribute('data-lang-btn') === currentLang) {
+        b.classList.add('is-active');
+      } else {
+        b.classList.remove('is-active');
+      }
+    }
+  }
+
+  function computeTranslation(raw) {
+    var n = norm(raw);
+    if (!n) return null;
+    if (exactDict[n]) {
+      return raw.replace(n, exactDict[n]);
+    }
+    if (!/[\u0370-\u03FF\u1F00-\u1FFF]/.test(raw)) return null;
+
+    var out = raw;
+    for (var i = 0; i < phrasePairs.length; i++) {
+      var gr = phrasePairs[i][0];
+      var en = phrasePairs[i][1];
+      if (out.indexOf(gr) !== -1) {
+        out = out.split(gr).join(en);
+      }
+    }
+    return (out !== raw) ? out : null;
+  }
+
+  function translateTextNode(textNode) {
+    var p = textNode.parentElement;
+    if (!p) return;
+    var tag = p.tagName;
+    if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return;
+
+    if (typeof textNode._origEL === 'undefined') {
+      var raw = textNode.nodeValue;
+      var tr = computeTranslation(raw);
+      if (tr) {
+        textNode._origEL = raw;
+        textNode._transEN = tr;
+      }
+    }
+
+    if (typeof textNode._origEL !== 'undefined') {
+      var target = (currentLang === 'en') ? textNode._transEN : textNode._origEL;
+      if (textNode.nodeValue !== target) {
+        textNode.nodeValue = target;
+      }
+    }
+  }
+
+  function translateAttributes(el) {
+    var attrs = ['placeholder', 'title', 'alt', 'aria-label'];
+    for (var i = 0; i < attrs.length; i++) {
+      var attr = attrs[i];
+      if (!el.hasAttribute(attr)) continue;
+      var storeKey = 'data-orig-el-' + attr;
+      if (!el.hasAttribute(storeKey)) {
+        var tr = computeTranslation(el.getAttribute(attr));
+        if (tr) {
+          el.setAttribute(storeKey, el.getAttribute(attr));
+          el.setAttribute('data-trans-en-' + attr, tr);
+        }
+      }
+      if (el.hasAttribute(storeKey)) {
+        var nextVal = (currentLang === 'en')
+          ? el.getAttribute('data-trans-en-' + attr)
+          : el.getAttribute(storeKey);
+        if (el.getAttribute(attr) !== nextVal) {
+          el.setAttribute(attr, nextVal);
+        }
+      }
+    }
+  }
+
+  function applyLanguageToTree(root) {
+    root = root || document.body;
+    if (!root) return;
+
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+    while ((node = walker.nextNode())) {
+      translateTextNode(node);
+    }
+
+    if (root.querySelectorAll) {
+      var allEls = root.querySelectorAll('[placeholder], [title], [alt], [aria-label]');
+      for (var i = 0; i < allEls.length; i++) {
+        translateAttributes(allEls[i]);
+      }
+    }
+  }
+
+  window.setSumpLanguage = function (lang) {
+    if (lang !== 'el' && lang !== 'en') return;
+    currentLang = lang;
+    localStorage.setItem(STORAGE_KEY, lang);
+    updateLangButtonsUI();
+    applyLanguageToTree(document.body);
+  };
+
+  function initBilingual() {
+    injectHeaderLangSwitcher();
+    applyLanguageToTree(document.body);
+
+    var observer = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var added = mutations[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var n = added[j];
+          if (n.nodeType === 1) applyLanguageToTree(n);
+          else if (n.nodeType === 3) translateTextNode(n);
+        }
+      }
+    });
+
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBilingual);
+  } else {
+    initBilingual();
+  }
+})();

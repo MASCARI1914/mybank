@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyBank Tracker • Αποταμίευση</title>
+  <link rel="stylesheet" href="savings.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- ================= AUTH CHECK / REDIRECT OVERLAY ================= -->
+  <div class="auth-overlay" id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-logo">
+          <div class="bars">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+          </div>
+          <span>MyBank Αποταμίευση</span>
+        </div>
+        <p class="auth-subtitle">Συνδεθείτε για να ανοίξετε το Ταμείο Αποταμίευσης</p>
+      </div>
+
+      <form id="authForm" onsubmit="event.preventDefault(); handleLogin();">
+        <div class="f-group">
+          <label class="f-label">Όνομα Χρήστη (Username)</label>
+          <input type="text" class="f-input" id="authUsername" placeholder="π.χ. christos ή evi" required autocomplete="username">
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Κωδικός Πρόσβασης (Password)</label>
+          <div class="pw-input-wrapper">
+            <input type="password" class="f-input" id="authPassword" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="pw-toggle-btn" onclick="togglePasswordVisibility()" title="Εμφάνιση / Απόκρυψη">
+              <svg id="pwEyeOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="pwEyeClosed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="authMessage" class="auth-msg"></div>
+
+        <div class="auth-actions-row">
+          <button type="button" class="auth-btn-primary" onclick="handleLogin()">Σύνδεση</button>
+          <a href="index.html" class="auth-btn-secondary" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;">← Έξοδα</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= SAVINGS DASHBOARD ================= -->
+  <div class="app-wrapper" id="appWrapper">
+    <header class="app-header">
+      <div class="brand-logo">
+        <div class="bars">
+          <div class="bar bar-green"></div>
+          <div class="bar bar-green"></div>
+          <div class="bar bar-green"></div>
+        </div>
+        <span>MyBank <span class="brand-tag">Αποταμίευση</span></span>
+      </div>
+
+      <div class="live-clock-badge">
+        <span id="liveDate">--/--/----</span>
+        <span>•</span>
+        <span class="time-now" id="liveTime">--:--:--</span>
+      </div>
+
+      <div class="header-actions">
+        <a href="index.html" class="header-btn nav-expenses-btn" title="Επιστροφή στα Έξοδα">
+          <span>💳 Έξοδα & Κύκλος</span>
+        </a>
+
+        <div class="user-pill">
+          <span>👤</span>
+          <span id="currentUserName">User</span>
+        </div>
+
+        <button class="header-btn primary-action-btn" onclick="openTxModal('deposit')">
+          <span>+ Κατάθεση</span>
+        </button>
+
+        <button class="header-btn" onclick="openRolloverModal()" title="Μεταφορά υπολοίπου από τον Κύκλο">
+          <span>🔄 Rollover Κύκλου</span>
+        </button>
+
+        <button class="header-btn" onclick="exportSavingsData()" title="Backup Αποταμίευσης">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Backup</span>
+        </button>
+
+        <button class="header-btn logout-btn" onclick="handleLogout()" title="Αποσύνδεση">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span>Έξοδος</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="dashboard-grid">
+      <!-- ================= LEFT COLUMN ================= -->
+      <section class="left-col">
+        <!-- 1. Total Savings Vault Card -->
+        <div class="card-box vault-card">
+          <div class="balance-header-row">
+            <div class="balance-label">Συνολικό Ταμείο Αποταμίευσης</div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="lock-toggle-btn" id="lockToggleBtn" onclick="toggleWithdrawalLock()" title="Κλείδωμα / Ξεκλείδωμα Ανάληψης">
+                🔓 Ξεκλείδωτο
+              </button>
+              <button class="subtle-link-btn" onclick="openInitialSavingsModal()" title="Ρύθμιση αρχικού ποσού αποταμίευσης">
+                ⚙️ Αρχικό: <span id="initialSavingsBadge">0,00 €</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="balance-row">
+            <div class="balance-amount" id="savingsBalanceDisplay">0,<span class="decimals">00 €</span></div>
+            <button class="eye-btn" id="toggleEyeBtn" title="Απόκρυψη / Εμφάνιση">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+
+          <div class="action-grid">
+            <div class="action-card" onclick="openTxModal('deposit')">
+              <div class="icon" style="color: #2ecc71;">+</div>
+              <span>Κατάθεση</span>
+            </div>
+            <div class="action-card" onclick="attemptWithdraw()">
+              <div class="icon" style="color: #ff5252;">-</div>
+              <span>Ανάληψη</span>
+            </div>
+            <div class="action-card" onclick="openNewGoalModal()">
+              <div class="icon" style="color: #fdbb11;">🎯</div>
+              <span>Νέος Στόχος</span>
+            </div>
+            <div class="action-card" onclick="openRolloverModal()">
+              <div class="icon" style="color: #3498db;">🔄</div>
+              <span>Rollover</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Emergency Fund & Monthly Deposit Target Widget -->
+        <div class="card-box targets-widget">
+          <!-- Emergency Fund -->
+          <div class="sub-widget-block">
+            <div class="widget-top-row">
+              <span class="widget-title">🛡️ Ταμείο Έκτακτης Ανάγκης</span>
+              <button class="subtle-yellow-btn" onclick="openEmergencyModal()">Στόχος: <span id="emergencyTargetBadge">3.000,00 €</span></button>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill fill-blue" id="emergencyProgressBar"></div>
+            </div>
+            <div class="widget-stats-row">
+              <span>Κάλυψη: <b id="emergencyPercentVal">0%</b></span>
+              <span>Απομένουν: <b id="emergencyRemainingVal">3.000,00 €</b></span>
+            </div>
+          </div>
+
+          <div class="divider-line"></div>
+
+          <!-- Monthly Deposit Target -->
+          <div class="sub-widget-block">
+            <div class="widget-top-row">
+              <span class="widget-title">📆 Μηνιαίος Στόχος Κατάθεσης</span>
+              <button class="subtle-green-btn" onclick="openMonthlyTargetModal()">Στόχος: <span id="monthlyTargetBadge">200,00 €</span></button>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill fill-green" id="monthlyProgressBar"></div>
+            </div>
+            <div class="widget-stats-row">
+              <span>Κατατέθηκαν αυτόν τον μήνα: <b id="monthlyDepositedVal" style="color:var(--accent-green);">0,00 €</b></span>
+              <span id="monthlyStatusTag">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Savings Growth Chart -->
+        <div class="chart-widget">
+          <div class="chart-header">
+            <div class="chart-title">
+              <span>📈 Αύξηση Κεφαλαίου ανά Μήνα</span>
+              <span class="chart-subtitle">Εξέλιξη αποταμίευσης τελευταίων 6 μηνών</span>
+            </div>
+            <div class="chart-toggle-group">
+              <button class="chart-toggle-btn active" id="chartBtnLine" onclick="setChartType('line')">📈 Γραμμή</button>
+              <button class="chart-toggle-btn" id="chartBtnBar" onclick="setChartType('bar')">📊 Ράβδος</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="savingsGrowthChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RIGHT COLUMN ================= -->
+      <section class="right-col">
+        <!-- Savings Goals / Pots Section -->
+        <div class="goals-section">
+          <div class="section-header-row">
+            <span class="cat-section-title">🏺 Κουμπαράδες / Υπο-στόχοι Αποταμίευσης</span>
+            <button class="tx-add-btn" onclick="openNewGoalModal()">+ Νέος Κουμπαράς</button>
+          </div>
+          <div class="goals-grid" id="goalsGrid"></div>
+        </div>
+
+        <!-- Category Filter Chips -->
+        <div class="cat-section-title" style="margin-top: 6px;">Φίλτρο Κατηγοριών Αποταμίευσης</div>
+        <div class="cat-scroll-container">
+          <div class="cat-chips-wrapper" id="catScroll">
+            <div class="chip active" onclick="filterCategory('all', this)">Όλες</div>
+            <div class="chip" onclick="filterCategory('Έκτακτη Ανάγκη', this)">🛡️ Έκτακτη Ανάγκη</div>
+            <div class="chip" onclick="filterCategory('Ταξίδια', this)">✈️ Ταξίδια</div>
+            <div class="chip" onclick="filterCategory('Αγορές', this)">🛍️ Αγορές / Tech</div>
+            <div class="chip" onclick="filterCategory('Επενδύσεις', this)">📈 Επενδύσεις</div>
+            <div class="chip" onclick="filterCategory('Rollover Κύκλου', this)">🔄 Rollover Κύκλου</div>
+            <div class="chip" onclick="filterCategory('Άλλο', this)">🏦 Γενική Αποταμίευση</div>
+          </div>
+        </div>
+
+        <!-- Transactions History -->
+        <div class="tx-header">
+          <span class="tx-title">Ιστορικό Κινήσεων Αποταμίευσης</span>
+          <div style="display:flex; gap:8px;">
+            <button class="tx-add-btn green-outline" onclick="openTxModal('deposit')">+ Κατάθεση</button>
+            <button class="tx-add-btn red-outline" onclick="attemptWithdraw()">- Ανάληψη</button>
+          </div>
+        </div>
+
+        <div class="tx-list" id="transactionList"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal 1: Κατάθεση / Ανάληψη Αποταμίευσης -->
+  <div class="modal-overlay" id="txModal" onclick="closeOverlay(event, 'txModal')">
+    <div class="modal-box">
+      <div class="modal-title" id="txModalTitle">Κίνηση Αποταμίευσης</div>
+
+      <div class="seg-ctrl">
+        <button class="seg-btn active deposit" id="btnDeposit" onclick="setTxType('deposit')">Κατάθεση (+)</button>
+        <button class="seg-btn withdraw" id="btnWithdraw" onclick="setTxType('withdraw')">Ανάληψη (-)</button>
+      </div>
+
+      <form id="txForm" onsubmit="saveSavingsTx(event)">
+        <div class="f-group">
+          <label class="f-label">Ποσό (€)</label>
+          <input type="number" step="0.01" min="0.01" class="f-input" id="txAmount" placeholder="π.χ. 150.00" required>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Κουμπαράς / Στόχος (Προαιρετικό)</label>
+          <select class="f-select" id="txGoalSelect">
+            <option value="">🏦 Γενικό Ταμείο (Χωρίς συγκεκριμένο στόχο)</option>
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Κατηγορία</label>
+          <select class="f-select" id="txCategory">
+            <option value="Έκτακτη Ανάγκη">🛡️ Έκτακτη Ανάγκη</option>
+            <option value="Ταξίδια">✈️ Ταξίδια</option>
+            <option value="Αγορές">🛍️ Αγορές / Tech / Αυτοκίνητο</option>
+            <option value="Επενδύσεις">📈 Επενδύσεις</option>
+            <option value="Rollover Κύκλου">🔄 Rollover Κύκλου</option>
+            <option value="Άλλο">🏦 Γενική Αποταμίευση</option>
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Περιγραφή / Τίτλος</label>
+          <input type="text" class="f-input" id="txTitle" placeholder="π.χ. Αποταμίευση Μήνα, Καλοκαιρινές Διακοπές" required>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Ημερομηνία & Ώρα</label>
+          <input type="datetime-local" class="f-input" id="txDateTime" required>
+        </div>
+
+        <button type="submit" class="submit-btn">Αποθήκευση Κίνησης</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('txModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Νέος Κουμπαράς / Στόχος -->
+  <div class="modal-overlay" id="goalModal" onclick="closeOverlay(event, 'goalModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">🎯 Νέος Κουμπαράς Στόχου</div>
+      <p class="modal-description">Δημιουργήστε έναν ξεχωριστό στόχο αποταμίευσης με παρακολούθηση προόδου & ETA:</p>
+
+      <form onsubmit="saveNewGoal(event)">
+        <div class="f-group">
+          <label class="f-label">Όνομα Στόχου</label>
+          <input type="text" class="f-input" id="goalTitle" placeholder="π.χ. Ταξίδι Ιταλία, Νέο Laptop" required>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Εικονίδιο & Κατηγορία</label>
+          <select class="f-select" id="goalCategory">
+            <option value="✈️ Ταξίδια">✈️ Ταξίδια</option>
+            <option value="🛍️ Αγορές">🛍️ Αγορές / Tech</option>
+            <option value="🚗 Όχημα">🚗 Αυτοκίνητο / Μηχανή</option>
+            <option value="🏠 Σπίτι">🏠 Σπίτι / Εξοπλισμός</option>
+            <option value="📈 Επενδύσεις">📈 Επενδύσεις</option>
+            <option value="🎯 Άλλο">🎯 Γενικός Στόχος</option>
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">Ποσό Στόχου (€)</label>
+          <input type="number" step="0.01" min="1" class="f-input" id="goalTargetAmount" placeholder="π.χ. 1200.00" required>
+        </div>
+
+        <button type="submit" class="submit-btn">Δημιουργία Κουμπαρά</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('goalModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Μεταφορά Υπολοίπου Κύκλου (Cycle Rollover) -->
+  <div class="modal-overlay" id="rolloverModal" onclick="closeOverlay(event, 'rolloverModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">🔄 Rollover Υπολοίπου Κύκλου</div>
+      <p class="modal-description">Μεταφέρετε όσα χρήματα περίσσεψαν από τον τρέχοντα κύκλο εξόδων κατευθείαν στην αποταμίευση:</p>
+
+      <div class="rollover-summary-card">
+        <div class="rollover-row">
+          <span>Όριο Κύκλου Εξόδων:</span>
+          <b id="roLimitVal">0,00 €</b>
+        </div>
+        <div class="rollover-row">
+          <span>Έξοδα Κύκλου:</span>
+          <b id="roSpentVal">0,00 €</b>
+        </div>
+        <div class="divider-line" style="margin: 8px 0;"></div>
+        <div class="rollover-row highlight">
+          <span>Διαθέσιμο Περίσσευμα:</span>
+          <b id="roSurplusVal" style="color: var(--accent-green);">0,00 €</b>
+        </div>
+      </div>
+
+      <form onsubmit="executeCycleRollover(event)">
+        <div class="f-group">
+          <label class="f-label">Ποσό προς Μεταφορά στην Αποταμίευση (€)</label>
+          <input type="number" step="0.01" min="0.01" class="f-input" id="roTransferAmount" required>
+        </div>
+        <div class="f-group">
+          <label class="f-label">Προορισμός Κουμπαρά (Προαιρετικό)</label>
+          <select class="f-select" id="roGoalSelect">
+            <option value="">🏦 Γενικό Ταμείο Αποταμίευσης</option>
+          </select>
+        </div>
+        <button type="submit" class="submit-btn">Μεταφορά στην Αποταμίευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('rolloverModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Αρχικό Ποσό Αποταμίευσης -->
+  <div class="modal-overlay" id="initialSavingsModal" onclick="closeOverlay(event, 'initialSavingsModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">⚙️ Αρχικό Κεφάλαιο Αποταμίευσης</div>
+      <p class="modal-description">Ορίστε το ποσό αποταμίευσης που είχατε ήδη συγκεντρώσει:</p>
+      <form onsubmit="saveInitialSavings(event)">
+        <div class="f-group">
+          <label class="f-label">Αρχικό Ποσό (€)</label>
+          <input type="number" step="0.01" class="f-input" id="inputInitialSavings" required>
+        </div>
+        <button type="submit" class="submit-btn">Αποθήκευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('initialSavingsModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Στόχος Ταμείου Έκτακτης Ανάγκης -->
+  <div class="modal-overlay" id="emergencyModal" onclick="closeOverlay(event, 'emergencyModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">🛡️ Ταμείο Έκτακτης Ανάγκης</div>
+      <p class="modal-description">Ορίστε το επιθυμητό ποσό ασφαλείας (Emergency Fund):</p>
+      <form onsubmit="saveEmergencyTarget(event)">
+        <div class="f-group">
+          <label class="f-label">Στόχος Έκτακτης Ανάγκης (€)</label>
+          <input type="number" step="0.01" min="1" class="f-input" id="inputEmergencyTarget" required>
+        </div>
+        <button type="submit" class="submit-btn">Αποθήκευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('emergencyModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6: Μηνιαίος Στόχος Κατάθεσης -->
+  <div class="modal-overlay" id="monthlyTargetModal" onclick="closeOverlay(event, 'monthlyTargetModal')">
+    <div class="modal-box small-modal">
+      <div class="modal-title">📆 Μηνιαίος Στόχος Κατάθεσης</div>
+      <p class="modal-description">Πόσα χρήματα στοχεύετε να αποταμιεύετε κάθε μήνα;</p>
+      <form onsubmit="saveMonthlyTarget(event)">
+        <div class="f-group">
+          <label class="f-label">Μηνιαίος Στόχος (€)</label>
+          <input type="number" step="0.01" min="1" class="f-input" id="inputMonthlyTarget" required>
+        </div>
+        <button type="submit" class="submit-btn">Αποθήκευση</button>
+        <button type="button" class="cancel-btn" onclick="closeModal('monthlyTargetModal')">Ακύρωση</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7: Προειδοποίηση Κλειδωμένης Ανάληψης -->
+  <div class="modal-overlay" id="lockWarningModal" onclick="closeOverlay(event, 'lockWarningModal')">
+    <div class="modal-box small-modal" style="border-color: rgba(255, 82, 82, 0.5);">
+      <div class="modal-title" style="color: var(--accent-red);">🔒 Η Ανάληψη είναι Κλειδωμένη!</div>
+      <p class="modal-description">Έχετε ενεργοποιήσει το <b>Κλείδωμα Ανάληψης</b> για να προστατεύσετε τις αποταμιεύσεις σας από παρορμητικές αγορές.<br><br>Είστε σίγουροι ότι θέλετε να προχωρήσετε σε ανάληψη;</p>
+      <button type="button" class="submit-btn" style="background: var(--accent-red); color: #fff;" onclick="unlockAndProceedWithdraw()">Ναι, Ξεκλείδωμα & Ανάληψη</button>
+      <button type="button" class="cancel-btn" onclick="closeModal('lockWarningModal')">Άκυρο (Κράτα τα κλειδωμένα)</button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toastNotification">
+    <span id="toastMsg">Μήνυμα</span>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="savings.js"></script>
+</body>
+</html>
